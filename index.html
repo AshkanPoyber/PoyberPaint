@@ -1,9 +1,16 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PoyberPaint — AshkanPoyber</title>
+    <meta
+      name="description"
+      content="PoyberPaint — A modern paint & drawing web app built with vanilla JS and TailwindCSS."
+    />
+    <meta name="theme-color" content="#0b0f17" />
+    <title>PoyberPaint — Draw. Sketch. Create.</title>
+
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -35,50 +42,7 @@
       };
     </script>
 
-    <style>
-      html,
-      body {
-        height: 100%;
-      }
-      body {
-        background:
-          radial-gradient(
-            1200px 600px at 10% -10%,
-            rgba(99, 102, 241, 0.18),
-            transparent 60%
-          ),
-          radial-gradient(
-            900px 500px at 110% 10%,
-            rgba(236, 72, 153, 0.12),
-            transparent 55%
-          ),
-          #0b0f17;
-      }
-      canvas {
-        touch-action: none;
-        cursor: crosshair;
-      }
-      .tool-btn.active {
-        background: rgba(99, 102, 241, 0.15);
-        color: #c7d2fe;
-        box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.45);
-      }
-      .swatch.selected {
-        outline: 2px solid #6366f1;
-        outline-offset: 2px;
-      }
-      input[type="range"] {
-        accent-color: #6366f1;
-      }
-      /* اسکرول نازک برای تولبار موبایل */
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-    </style>
+    <link rel="stylesheet" href="css/style.css" />
   </head>
 
   <body
@@ -107,16 +71,17 @@
         </div>
         <div>
           <h1 class="text-base sm:text-lg font-semibold tracking-tight">
-            PaintApp
+            PoyberPaint
           </h1>
           <p class="text-[11px] sm:text-xs text-slate-400 -mt-0.5">
-            by <span class="text-accent-soft">AshkanPoyber</span>
+            Draw. Sketch. Create.
           </p>
         </div>
       </div>
       <a
         href="https://github.com/ashkanpoyber"
         target="_blank"
+        rel="noopener"
         class="text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1.5"
       >
         <svg viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor">
@@ -400,267 +365,6 @@
       </p>
     </main>
 
-    <script>
-      (() => {
-        const canvas = document.getElementById("board");
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
-        const toolBtns = document.querySelectorAll(".tool-btn");
-        const fillColor = document.getElementById("fillColor");
-        const sizeSlider = document.getElementById("sizeSlider");
-        const sizeLabel = document.getElementById("sizeLabel");
-        const colorRow = document.getElementById("colorRow");
-        const undoBtn = document.getElementById("undo");
-        const redoBtn = document.getElementById("redo");
-
-        const PALETTE = [
-          "#000000",
-          "#ffffff",
-          "#ef4444",
-          "#f59e0b",
-          "#22c55e",
-          "#3b82f6",
-          "#8b5cf6",
-          "#ec4899",
-          "#14b8a6",
-          "#94a3b8",
-        ];
-
-        let isDrawing = false;
-        let selectedTool = "brush";
-        let brushWidth = 5;
-        let selectedColor = "#000000";
-        let startX = 0,
-          startY = 0;
-        let snapshot = null;
-
-        // History (undo/redo)
-        const history = [];
-        const redoStack = [];
-        const MAX_HISTORY = 30;
-
-        // --- Build color swatches ---
-        PALETTE.forEach((c, i) => {
-          const b = document.createElement("button");
-          b.className =
-            "swatch w-full aspect-square rounded-full border border-white/10 transition hover:scale-110" +
-            (i === 0 ? " selected" : "");
-          b.style.background = c;
-          b.dataset.color = c;
-          b.setAttribute("aria-label", `Color ${c}`);
-          colorRow.appendChild(b);
-        });
-        const picker = document.createElement("input");
-        picker.type = "color";
-        picker.value = "#3b82f6";
-        picker.className =
-          "w-full aspect-square rounded-full border border-dashed border-white/20 cursor-pointer bg-transparent p-0";
-        picker.title = "Custom color";
-        colorRow.appendChild(picker);
-
-        colorRow.addEventListener("click", (e) => {
-          const b = e.target.closest(".swatch");
-          if (!b) return;
-          colorRow
-            .querySelectorAll(".swatch")
-            .forEach((s) => s.classList.remove("selected"));
-          b.classList.add("selected");
-          selectedColor = b.dataset.color;
-        });
-        picker.addEventListener("input", () => {
-          colorRow
-            .querySelectorAll(".swatch")
-            .forEach((s) => s.classList.remove("selected"));
-          selectedColor = picker.value;
-        });
-
-        // --- Tool selection ---
-        toolBtns.forEach((btn) =>
-          btn.addEventListener("click", () => {
-            document
-              .querySelector(".tool-btn.active")
-              ?.classList.remove("active");
-            btn.classList.add("active");
-            selectedTool = btn.dataset.tool;
-          }),
-        );
-
-        // --- Slider ---
-        sizeSlider.addEventListener("input", () => {
-          brushWidth = +sizeSlider.value;
-          sizeLabel.textContent = brushWidth + "px";
-        });
-
-        // --- Canvas setup (with DPR for crisp lines) ---
-        function setupCanvas() {
-          const rect = canvas.getBoundingClientRect();
-          const dpr = window.devicePixelRatio || 1;
-          const img = history.length
-            ? ctx.getImageData(0, 0, canvas.width, canvas.height)
-            : null;
-          canvas.width = Math.floor(rect.width * dpr);
-          canvas.height = Math.floor(rect.height * dpr);
-          ctx.scale(dpr, dpr);
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.fillStyle = "#fff";
-          ctx.fillRect(0, 0, rect.width, rect.height);
-          if (img) ctx.putImageData(img, 0, 0);
-        }
-
-        function clearCanvas() {
-          const { width, height } = canvas.getBoundingClientRect();
-          ctx.save();
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.fillStyle = "#fff";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.restore();
-        }
-
-        function pushHistory() {
-          history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-          if (history.length > MAX_HISTORY) history.shift();
-          redoStack.length = 0;
-          updateHistoryButtons();
-        }
-        function updateHistoryButtons() {
-          undoBtn.disabled = history.length <= 1;
-          redoBtn.disabled = redoStack.length === 0;
-        }
-
-        undoBtn.addEventListener("click", () => {
-          if (history.length <= 1) return;
-          redoStack.push(history.pop());
-          const prev = history[history.length - 1];
-          ctx.putImageData(prev, 0, 0);
-          updateHistoryButtons();
-        });
-        redoBtn.addEventListener("click", () => {
-          if (!redoStack.length) return;
-          const next = redoStack.pop();
-          history.push(next);
-          ctx.putImageData(next, 0, 0);
-          updateHistoryButtons();
-        });
-
-        // --- Pointer helpers ---
-        function getPos(e) {
-          const r = canvas.getBoundingClientRect();
-          return { x: e.clientX - r.left, y: e.clientY - r.top };
-        }
-
-        // --- Drawing shapes ---
-        function drawRect(x, y) {
-          const w = startX - x,
-            h = startY - y;
-          ctx.beginPath();
-          if (fillColor.checked) ctx.fillRect(x, y, w, h);
-          else ctx.strokeRect(x, y, w, h);
-        }
-        function drawCircle(x, y) {
-          const r = Math.hypot(startX - x, startY - y);
-          ctx.beginPath();
-          ctx.arc(startX, startY, r, 0, Math.PI * 2);
-          fillColor.checked ? ctx.fill() : ctx.stroke();
-        }
-        function drawTriangle(x, y) {
-          ctx.beginPath();
-          ctx.moveTo(startX, startY);
-          ctx.lineTo(x, y);
-          ctx.lineTo(startX * 2 - x, y);
-          ctx.closePath();
-          fillColor.checked ? ctx.fill() : ctx.stroke();
-        }
-
-        // --- Pointer events ---
-        canvas.addEventListener("pointerdown", (e) => {
-          canvas.setPointerCapture(e.pointerId);
-          isDrawing = true;
-          const { x, y } = getPos(e);
-          startX = x;
-          startY = y;
-
-          ctx.lineWidth = brushWidth;
-          ctx.strokeStyle = selectedTool === "eraser" ? "#fff" : selectedColor;
-          ctx.fillStyle = selectedColor;
-
-          snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        });
-
-        canvas.addEventListener("pointermove", (e) => {
-          if (!isDrawing) return;
-          const { x, y } = getPos(e);
-          ctx.putImageData(snapshot, 0, 0);
-
-          if (selectedTool === "brush" || selectedTool === "eraser") {
-            ctx.beginPath();
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(x, y);
-            ctx.stroke();
-            startX = x;
-            startY = y;
-            snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          } else if (selectedTool === "rectangle") drawRect(x, y);
-          else if (selectedTool === "circle") drawCircle(x, y);
-          else if (selectedTool === "triangle") drawTriangle(x, y);
-        });
-
-        function endDraw() {
-          if (!isDrawing) return;
-          isDrawing = false;
-          pushHistory();
-        }
-        canvas.addEventListener("pointerup", endDraw);
-        canvas.addEventListener("pointercancel", endDraw);
-        canvas.addEventListener("pointerleave", endDraw);
-
-        // --- Clear / Save ---
-        document.getElementById("clear").addEventListener("click", () => {
-          clearCanvas();
-          pushHistory();
-        });
-        document.getElementById("save").addEventListener("click", () => {
-          const link = document.createElement("a");
-          link.download = `paint-${Date.now()}.png`;
-          link.href = canvas.toDataURL("image/png");
-          link.click();
-        });
-
-        // --- Keyboard shortcuts ---
-        document.addEventListener("keydown", (e) => {
-          if (!(e.ctrlKey || e.metaKey)) return;
-          if (e.key.toLowerCase() === "z" && !e.shiftKey) {
-            e.preventDefault();
-            undoBtn.click();
-          } else if (
-            e.key.toLowerCase() === "y" ||
-            (e.key.toLowerCase() === "z" && e.shiftKey)
-          ) {
-            e.preventDefault();
-            redoBtn.click();
-          } else if (e.key.toLowerCase() === "s") {
-            e.preventDefault();
-            document.getElementById("save").click();
-          }
-        });
-
-        // --- Init ---
-        window.addEventListener("load", () => {
-          setupCanvas();
-          pushHistory();
-        });
-        window.addEventListener(
-          "resize",
-          debounce(() => setupCanvas(), 200),
-        );
-
-        function debounce(fn, ms) {
-          let t;
-          return (...a) => {
-            clearTimeout(t);
-            t = setTimeout(() => fn(...a), ms);
-          };
-        }
-      })();
-    </script>
+    <script src="js/app.js"></script>
   </body>
 </html>

@@ -1,0 +1,51 @@
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(
+      1200px 600px at 10% -10%,
+      rgba(99, 102, 241, 0.18),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 500px at 110% 10%,
+      rgba(236, 72, 153, 0.12),
+      transparent 55%
+    ),
+    #0b0f17;
+}
+
+canvas {
+  touch-action: none;
+  cursor: crosshair;
+}
+
+/* Active tool */
+.tool-btn.active {
+  background: rgba(99, 102, 241, 0.15);
+  color: #c7d2fe;
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.45);
+}
+
+/* Selected swatch */
+.swatch.selected {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+/* Range input */
+input[type="range"] {
+  accent-color: #6366f1;
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
