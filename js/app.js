@@ -428,7 +428,7 @@
   // ---------- Init ----------
   async function init() {
     buildColorSwatches();
-    loadSavedState(); // 👈 بعد از ساخت swatch ها، تا بتونه انتخاب رو هایلایت کنه
+    loadSavedState();
     bindTools();
     bindHistory();
     bindDrawing();
@@ -436,7 +436,7 @@
     bindKeyboard();
 
     setupCanvas();
-    await loadSavedCanvas(); // 👈 قبل از pushHistory، تا تصویر لود شده در تاریخچه ثبت شه
+    await loadSavedCanvas();
     pushHistory();
 
     window.addEventListener("resize", debounce(setupCanvas, 200));
