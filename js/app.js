@@ -17,6 +17,7 @@
   const colorRow = document.getElementById("colorRow");
   const undoBtn = document.getElementById("undo");
   const redoBtn = document.getElementById("redo");
+  const saveIndicator = document.getElementById("saveIndicator");
 
   // ---------- Constants ----------
   const PALETTE = [
@@ -42,6 +43,7 @@
   let startX = 0;
   let startY = 0;
   let snapshot = null;
+  let saveIndicatorTimer = null;
 
   const history = [];
   const redoStack = [];
@@ -76,6 +78,7 @@
         .forEach((s) => s.classList.remove("selected"));
       b.classList.add("selected");
       selectedColor = b.dataset.color;
+      persistSettings();
     });
 
     picker.addEventListener("input", () => {
@@ -83,6 +86,7 @@
         .querySelectorAll(".swatch")
         .forEach((s) => s.classList.remove("selected"));
       selectedColor = picker.value;
+      persistSettings();
     });
   }
 
@@ -93,13 +97,17 @@
         document.querySelector(".tool-btn.active")?.classList.remove("active");
         btn.classList.add("active");
         selectedTool = btn.dataset.tool;
+        persistSettings();
       }),
     );
 
     sizeSlider.addEventListener("input", () => {
       brushWidth = +sizeSlider.value;
       sizeLabel.textContent = brushWidth + "px";
+      persistSettings();
     });
+
+    fillColor.addEventListener("change", persistSettings);
   }
 
   // ---------- Canvas Setup ----------
@@ -165,6 +173,7 @@
     if (history.length > MAX_HISTORY) history.shift();
     redoStack.length = 0;
     updateHistoryButtons();
+    persistCanvas();
   }
 
   function updateHistoryButtons() {
@@ -304,6 +313,16 @@
       link.href = exportCanvas.toDataURL("image/png");
       link.click();
     });
+
+    document.getElementById("reset").addEventListener("click", () => {
+      if (
+        !confirm("This will clear your saved drawing and settings. Continue?")
+      )
+        return;
+      Storage.clearCanvas();
+      Storage.saveSettings({});
+      location.reload();
+    });
   }
 
   // ---------- Keyboard ----------
@@ -333,9 +352,83 @@
     };
   }
 
+  // ---------- showSaved ----------
+  function showSaved() {
+    if (!saveIndicator) return;
+    saveIndicator.style.opacity = "1";
+    clearTimeout(saveIndicatorTimer);
+    saveIndicatorTimer = setTimeout(() => {
+      saveIndicator.style.opacity = "0";
+    }, 1200);
+  }
+
+  // ---------- persistCanvas ----------
+  function persistCanvas() {
+    if (!Storage.available) return;
+    Storage.saveCanvas(canvas.toDataURL("image/png"));
+    showSaved();
+  }
+
+  // ---------- persistSettings ----------
+  function persistSettings() {
+    if (!Storage.available) return;
+    Storage.saveSettings({
+      tool: selectedTool,
+      color: selectedColor,
+      width: brushWidth,
+      fill: fillColor.checked,
+    });
+  }
+
+  // ---------- Load Saved State ----------
+  function loadSavedState() {
+    const settings = Storage.loadSettings();
+    if (!settings) return;
+
+    selectedTool = settings.tool || "brush";
+    selectedColor = settings.color || "#000000";
+    brushWidth = settings.width || 5;
+    fillColor.checked = !!settings.fill;
+
+    // Apply to UI
+    sizeSlider.value = brushWidth;
+    sizeLabel.textContent = brushWidth + "px";
+
+    // Highlight active tool button
+    document.querySelectorAll(".tool-btn").forEach((b) => {
+      b.classList.toggle("active", b.dataset.tool === selectedTool);
+    });
+
+    // Highlight active color swatch
+    document.querySelectorAll(".swatch").forEach((s) => {
+      s.classList.toggle("selected", s.dataset.color === selectedColor);
+    });
+  }
+
+  // ---------- Load Saved Canvas ----------
+  function loadSavedCanvas() {
+    const dataURL = Storage.loadCanvas();
+    if (!dataURL) return Promise.resolve(false);
+
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const rect = canvas.getBoundingClientRect();
+        ctx.save();
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        ctx.drawImage(img, 0, 0, rect.width, rect.height);
+        ctx.restore();
+        resolve(true);
+      };
+      img.onerror = () => resolve(false);
+      img.src = dataURL;
+    });
+  }
+
   // ---------- Init ----------
-  function init() {
+  async function init() {
     buildColorSwatches();
+    loadSavedState(); // 👈 بعد از ساخت swatch ها، تا بتونه انتخاب رو هایلایت کنه
     bindTools();
     bindHistory();
     bindDrawing();
@@ -343,6 +436,7 @@
     bindKeyboard();
 
     setupCanvas();
+    await loadSavedCanvas(); // 👈 قبل از pushHistory، تا تصویر لود شده در تاریخچه ثبت شه
     pushHistory();
 
     window.addEventListener("resize", debounce(setupCanvas, 200));

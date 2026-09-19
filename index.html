@@ -332,6 +332,25 @@
               </svg>
               Save
             </button>
+            <button
+              id="reset"
+              title="Reset saved data"
+              class="col-span-2 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-slate-400 bg-white/5 hover:bg-amber-500/20 hover:text-amber-200 transition"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+              Reset Saved Data
+            </button>
           </section>
         </aside>
 
@@ -339,6 +358,15 @@
         <section
           class="bg-ink-800/70 backdrop-blur border border-white/5 rounded-2xl p-2 sm:p-3 shadow-xl"
         >
+          <div class="flex items-center justify-between px-2 pb-2">
+            <span class="text-[11px] text-slate-500">Canvas</span>
+            <span
+              id="saveIndicator"
+              class="text-[11px] text-emerald-400 opacity-0 transition-opacity duration-300"
+            >
+              ✓ Saved
+            </span>
+          </div>
           <div class="relative rounded-xl overflow-hidden bg-white">
             <canvas
               id="board"
@@ -365,6 +393,7 @@
       </p>
     </main>
 
+    <script src="js/storage.js"></script>
     <script src="js/app.js"></script>
   </body>
 </html>
