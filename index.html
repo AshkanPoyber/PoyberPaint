@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PoyberPaint — AshkanPoyber</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ["Inter", "sans-serif"] },
+            colors: {
+              ink: {
+                900: "#0b0f17",
+                800: "#111827",
+                700: "#1f2937",
+                600: "#374151",
+              },
+              accent: { DEFAULT: "#6366f1", hover: "#4f46e5", soft: "#818cf8" },
+            },
+            boxShadow: {
+              glow: "0 0 0 1px rgba(99,102,241,.35), 0 8px 24px -6px rgba(99,102,241,.45)",
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        background:
+          radial-gradient(
+            1200px 600px at 10% -10%,
+            rgba(99, 102, 241, 0.18),
+            transparent 60%
+          ),
+          radial-gradient(
+            900px 500px at 110% 10%,
+            rgba(236, 72, 153, 0.12),
+            transparent 55%
+          ),
+          #0b0f17;
+      }
+      canvas {
+        touch-action: none;
+        cursor: crosshair;
+      }
+      .tool-btn.active {
+        background: rgba(99, 102, 241, 0.15);
+        color: #c7d2fe;
+        box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.45);
+      }
+      .swatch.selected {
+        outline: 2px solid #6366f1;
+        outline-offset: 2px;
+      }
+      input[type="range"] {
+        accent-color: #6366f1;
+      }
+      /* اسکرول نازک برای تولبار موبایل */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+    </style>
+  </head>
+
+  <body
+    class="min-h-screen text-slate-200 font-sans antialiased selection:bg-accent/30"
+  >
+    <!-- Header -->
+    <header
+      class="max-w-[1400px] mx-auto px-4 sm:px-6 pt-6 pb-3 flex items-center justify-between"
+    >
+      <div class="flex items-center gap-3">
+        <div
+          class="w-9 h-9 rounded-xl bg-gradient-to-br from-accent to-fuchsia-500 shadow-glow grid place-items-center"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            class="w-5 h-5 text-white"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M12 19l7-7 3 3-7 7-3-3z" />
+            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+            <path d="M2 2l7.586 7.586" />
+            <circle cx="11" cy="11" r="2" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-semibold tracking-tight">
+            PaintApp
+          </h1>
+          <p class="text-[11px] sm:text-xs text-slate-400 -mt-0.5">
+            by <span class="text-accent-soft">AshkanPoyber</span>
+          </p>
+        </div>
+      </div>
+      <a
+        href="https://github.com/ashkanpoyber"
+        target="_blank"
+        class="text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1.5"
+      >
+        <svg viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor">
+          <path
+            d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.36-3.88-1.36-.53-1.34-1.3-1.7-1.3-1.7-1.05-.72.08-.7.08-.7 1.17.08 1.78 1.2 1.78 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.3-5.26-1.28-5.26-5.7 0-1.26.45-2.29 1.2-3.1-.12-.3-.52-1.48.11-3.08 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.6.23 2.78.11 3.08.75.81 1.2 1.84 1.2 3.1 0 4.43-2.7 5.39-5.27 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.2.67.8.56A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"
+          />
+        </svg>
+        GitHub
+      </a>
+    </header>
+
+    <!-- Main -->
+    <main class="max-w-[1400px] mx-auto px-4 sm:px-6 pb-6">
+      <div class="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
+        <!-- Tools Board -->
+        <aside
+          class="bg-ink-800/70 backdrop-blur border border-white/5 rounded-2xl p-3 sm:p-4 shadow-xl lg:sticky lg:top-4 lg:self-start"
+        >
+          <!-- Shapes -->
+          <section class="mb-5">
+            <h2
+              class="text-[11px] uppercase tracking-widest text-slate-500 font-medium mb-2 px-1"
+            >
+              Shapes
+            </h2>
+            <div class="grid grid-cols-4 lg:grid-cols-3 gap-1.5">
+              <button
+                data-tool="rectangle"
+                class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-slate-200 transition"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <rect x="3" y="5" width="18" height="14" rx="1.5" />
+                </svg>
+                <span class="text-[10px]">Rect</span>
+              </button>
+              <button
+                data-tool="circle"
+                class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-slate-200 transition"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                </svg>
+                <span class="text-[10px]">Circle</span>
+              </button>
+              <button
+                data-tool="triangle"
+                class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-slate-200 transition"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                >
+                  <path d="M12 4l9 16H3z" />
+                </svg>
+                <span class="text-[10px]">Tri</span>
+              </button>
+              <label
+                class="flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-slate-200 transition cursor-pointer"
+              >
+                <input type="checkbox" id="fillColor" class="sr-only peer" />
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-5 h-5 peer-checked:text-accent-soft"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M4 20h16" />
+                  <path d="M7 16l7-7 3 3-7 7H7z" />
+                  <path d="M14 9l2-2a2 2 0 0 1 3 3l-2 2" />
+                </svg>
+                <span class="text-[10px] peer-checked:text-accent-soft"
+                  >Fill</span
+                >
+              </label>
+            </div>
+          </section>
+
+          <!-- Options -->
+          <section class="mb-5">
+            <h2
+              class="text-[11px] uppercase tracking-widest text-slate-500 font-medium mb-2 px-1"
+            >
+              Options
+            </h2>
+            <div class="grid grid-cols-4 lg:grid-cols-2 gap-1.5 mb-3">
+              <button
+                data-tool="brush"
+                class="tool-btn active group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-slate-200 transition"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                >
+                  <path d="M3 21l3.5-3.5" />
+                  <path d="M14 7l3 3L9.5 17.5 6.5 14.5 14 7z" />
+                  <path
+                    d="M20 4l-3 3 3 3 3-3-3-3z"
+                    transform="translate(-3,-1) scale(.9)"
+                  />
+                </svg>
+                <span class="text-[10px]">Brush</span>
+              </button>
+              <button
+                data-tool="eraser"
+                class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-400 hover:bg-white/5 hover:text-slate-200 transition"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                >
+                  <path d="M4 17l7-7 6 6-3 3H6l-2-2z" />
+                  <path d="M11 10l6-6 6 6-6 6" />
+                  <path d="M20 20h-4" />
+                </svg>
+                <span class="text-[10px]">Eraser</span>
+              </button>
+            </div>
+
+            <div class="px-1">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[11px] text-slate-400">Size</span>
+                <span
+                  id="sizeLabel"
+                  class="text-[11px] font-medium text-accent-soft"
+                  >5px</span
+                >
+              </div>
+              <input
+                id="sizeSlider"
+                type="range"
+                min="1"
+                max="60"
+                value="5"
+                class="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+          </section>
+
+          <!-- Colors -->
+          <section class="mb-5">
+            <h2
+              class="text-[11px] uppercase tracking-widest text-slate-500 font-medium mb-2 px-1"
+            >
+              Colors
+            </h2>
+            <div id="colorRow" class="grid grid-cols-6 gap-2 px-1"></div>
+          </section>
+
+          <!-- Actions -->
+          <section class="grid grid-cols-2 gap-2 pt-3 border-t border-white/5">
+            <button
+              id="undo"
+              title="Undo (Ctrl+Z)"
+              class="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-slate-300 bg-white/5 hover:bg-white/10 transition disabled:opacity-40"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M9 14L4 9l5-5" />
+                <path d="M4 9h10a6 6 0 0 1 6 6v1" />
+              </svg>
+              Undo
+            </button>
+            <button
+              id="redo"
+              title="Redo (Ctrl+Y)"
+              class="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-slate-300 bg-white/5 hover:bg-white/10 transition disabled:opacity-40"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M15 14l5-5-5-5" />
+                <path d="M20 9H10a6 6 0 0 0-6 6v1" />
+              </svg>
+              Redo
+            </button>
+            <button
+              id="clear"
+              class="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-slate-300 bg-white/5 hover:bg-rose-500/20 hover:text-rose-200 transition"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              >
+                <path d="M3 6h18" />
+                <path d="M8 6V4h8v2" />
+                <path d="M6 6l1 14h10l1-14" />
+              </svg>
+              Clear
+            </button>
+            <button
+              id="save"
+              class="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-white bg-accent hover:bg-accent-hover shadow-glow transition"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <path d="M7 10l5 5 5-5" />
+                <path d="M12 15V3" />
+              </svg>
+              Save
+            </button>
+          </section>
+        </aside>
+
+        <!-- Canvas Board -->
+        <section
+          class="bg-ink-800/70 backdrop-blur border border-white/5 rounded-2xl p-2 sm:p-3 shadow-xl"
+        >
+          <div class="relative rounded-xl overflow-hidden bg-white">
+            <canvas
+              id="board"
+              class="block w-full h-[60vh] sm:h-[72vh]"
+            ></canvas>
+          </div>
+        </section>
+      </div>
+
+      <p class="text-center text-[11px] text-slate-500 mt-4">
+        Shortcuts:
+        <kbd class="px-1.5 py-0.5 rounded bg-white/5 border border-white/10"
+          >Ctrl+Z</kbd
+        >
+        undo ·
+        <kbd class="px-1.5 py-0.5 rounded bg-white/5 border border-white/10"
+          >Ctrl+Y</kbd
+        >
+        redo ·
+        <kbd class="px-1.5 py-0.5 rounded bg-white/5 border border-white/10"
+          >Ctrl+S</kbd
+        >
+        save
+      </p>
+    </main>
+
+    <script>
+      (() => {
+        const canvas = document.getElementById("board");
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        const toolBtns = document.querySelectorAll(".tool-btn");
+        const fillColor = document.getElementById("fillColor");
+        const sizeSlider = document.getElementById("sizeSlider");
+        const sizeLabel = document.getElementById("sizeLabel");
+        const colorRow = document.getElementById("colorRow");
+        const undoBtn = document.getElementById("undo");
+        const redoBtn = document.getElementById("redo");
+
+        const PALETTE = [
+          "#000000",
+          "#ffffff",
+          "#ef4444",
+          "#f59e0b",
+          "#22c55e",
+          "#3b82f6",
+          "#8b5cf6",
+          "#ec4899",
+          "#14b8a6",
+          "#94a3b8",
+        ];
+
+        let isDrawing = false;
+        let selectedTool = "brush";
+        let brushWidth = 5;
+        let selectedColor = "#000000";
+        let startX = 0,
+          startY = 0;
+        let snapshot = null;
+
+        // History (undo/redo)
+        const history = [];
+        const redoStack = [];
+        const MAX_HISTORY = 30;
+
+        // --- Build color swatches ---
+        PALETTE.forEach((c, i) => {
+          const b = document.createElement("button");
+          b.className =
+            "swatch w-full aspect-square rounded-full border border-white/10 transition hover:scale-110" +
+            (i === 0 ? " selected" : "");
+          b.style.background = c;
+          b.dataset.color = c;
+          b.setAttribute("aria-label", `Color ${c}`);
+          colorRow.appendChild(b);
+        });
+        const picker = document.createElement("input");
+        picker.type = "color";
+        picker.value = "#3b82f6";
+        picker.className =
+          "w-full aspect-square rounded-full border border-dashed border-white/20 cursor-pointer bg-transparent p-0";
+        picker.title = "Custom color";
+        colorRow.appendChild(picker);
+
+        colorRow.addEventListener("click", (e) => {
+          const b = e.target.closest(".swatch");
+          if (!b) return;
+          colorRow
+            .querySelectorAll(".swatch")
+            .forEach((s) => s.classList.remove("selected"));
+          b.classList.add("selected");
+          selectedColor = b.dataset.color;
+        });
+        picker.addEventListener("input", () => {
+          colorRow
+            .querySelectorAll(".swatch")
+            .forEach((s) => s.classList.remove("selected"));
+          selectedColor = picker.value;
+        });
+
+        // --- Tool selection ---
+        toolBtns.forEach((btn) =>
+          btn.addEventListener("click", () => {
+            document
+              .querySelector(".tool-btn.active")
+              ?.classList.remove("active");
+            btn.classList.add("active");
+            selectedTool = btn.dataset.tool;
+          }),
+        );
+
+        // --- Slider ---
+        sizeSlider.addEventListener("input", () => {
+          brushWidth = +sizeSlider.value;
+          sizeLabel.textContent = brushWidth + "px";
+        });
+
+        // --- Canvas setup (with DPR for crisp lines) ---
+        function setupCanvas() {
+          const rect = canvas.getBoundingClientRect();
+          const dpr = window.devicePixelRatio || 1;
+          const img = history.length
+            ? ctx.getImageData(0, 0, canvas.width, canvas.height)
+            : null;
+          canvas.width = Math.floor(rect.width * dpr);
+          canvas.height = Math.floor(rect.height * dpr);
+          ctx.scale(dpr, dpr);
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, rect.width, rect.height);
+          if (img) ctx.putImageData(img, 0, 0);
+        }
+
+        function clearCanvas() {
+          const { width, height } = canvas.getBoundingClientRect();
+          ctx.save();
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        }
+
+        function pushHistory() {
+          history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+          if (history.length > MAX_HISTORY) history.shift();
+          redoStack.length = 0;
+          updateHistoryButtons();
+        }
+        function updateHistoryButtons() {
+          undoBtn.disabled = history.length <= 1;
+          redoBtn.disabled = redoStack.length === 0;
+        }
+
+        undoBtn.addEventListener("click", () => {
+          if (history.length <= 1) return;
+          redoStack.push(history.pop());
+          const prev = history[history.length - 1];
+          ctx.putImageData(prev, 0, 0);
+          updateHistoryButtons();
+        });
+        redoBtn.addEventListener("click", () => {
+          if (!redoStack.length) return;
+          const next = redoStack.pop();
+          history.push(next);
+          ctx.putImageData(next, 0, 0);
+          updateHistoryButtons();
+        });
+
+        // --- Pointer helpers ---
+        function getPos(e) {
+          const r = canvas.getBoundingClientRect();
+          return { x: e.clientX - r.left, y: e.clientY - r.top };
+        }
+
+        // --- Drawing shapes ---
+        function drawRect(x, y) {
+          const w = startX - x,
+            h = startY - y;
+          ctx.beginPath();
+          if (fillColor.checked) ctx.fillRect(x, y, w, h);
+          else ctx.strokeRect(x, y, w, h);
+        }
+        function drawCircle(x, y) {
+          const r = Math.hypot(startX - x, startY - y);
+          ctx.beginPath();
+          ctx.arc(startX, startY, r, 0, Math.PI * 2);
+          fillColor.checked ? ctx.fill() : ctx.stroke();
+        }
+        function drawTriangle(x, y) {
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(x, y);
+          ctx.lineTo(startX * 2 - x, y);
+          ctx.closePath();
+          fillColor.checked ? ctx.fill() : ctx.stroke();
+        }
+
+        // --- Pointer events ---
+        canvas.addEventListener("pointerdown", (e) => {
+          canvas.setPointerCapture(e.pointerId);
+          isDrawing = true;
+          const { x, y } = getPos(e);
+          startX = x;
+          startY = y;
+
+          ctx.lineWidth = brushWidth;
+          ctx.strokeStyle = selectedTool === "eraser" ? "#fff" : selectedColor;
+          ctx.fillStyle = selectedColor;
+
+          snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        });
+
+        canvas.addEventListener("pointermove", (e) => {
+          if (!isDrawing) return;
+          const { x, y } = getPos(e);
+          ctx.putImageData(snapshot, 0, 0);
+
+          if (selectedTool === "brush" || selectedTool === "eraser") {
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            startX = x;
+            startY = y;
+            snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          } else if (selectedTool === "rectangle") drawRect(x, y);
+          else if (selectedTool === "circle") drawCircle(x, y);
+          else if (selectedTool === "triangle") drawTriangle(x, y);
+        });
+
+        function endDraw() {
+          if (!isDrawing) return;
+          isDrawing = false;
+          pushHistory();
+        }
+        canvas.addEventListener("pointerup", endDraw);
+        canvas.addEventListener("pointercancel", endDraw);
+        canvas.addEventListener("pointerleave", endDraw);
+
+        // --- Clear / Save ---
+        document.getElementById("clear").addEventListener("click", () => {
+          clearCanvas();
+          pushHistory();
+        });
+        document.getElementById("save").addEventListener("click", () => {
+          const link = document.createElement("a");
+          link.download = `paint-${Date.now()}.png`;
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+        });
+
+        // --- Keyboard shortcuts ---
+        document.addEventListener("keydown", (e) => {
+          if (!(e.ctrlKey || e.metaKey)) return;
+          if (e.key.toLowerCase() === "z" && !e.shiftKey) {
+            e.preventDefault();
+            undoBtn.click();
+          } else if (
+            e.key.toLowerCase() === "y" ||
+            (e.key.toLowerCase() === "z" && e.shiftKey)
+          ) {
+            e.preventDefault();
+            redoBtn.click();
+          } else if (e.key.toLowerCase() === "s") {
+            e.preventDefault();
+            document.getElementById("save").click();
+          }
+        });
+
+        // --- Init ---
+        window.addEventListener("load", () => {
+          setupCanvas();
+          pushHistory();
+        });
+        window.addEventListener(
+          "resize",
+          debounce(() => setupCanvas(), 200),
+        );
+
+        function debounce(fn, ms) {
+          let t;
+          return (...a) => {
+            clearTimeout(t);
+            t = setTimeout(() => fn(...a), ms);
+          };
+        }
+      })();
+    </script>
+  </body>
+</html>
