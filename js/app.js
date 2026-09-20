@@ -18,6 +18,7 @@
   const undoBtn = document.getElementById("undo");
   const redoBtn = document.getElementById("redo");
   const saveIndicator = document.getElementById("saveIndicator");
+  const themeToggle = document.getElementById("themeToggle");
 
   // ---------- Constants ----------
   const PALETTE = [
@@ -47,6 +48,28 @@
 
   const history = [];
   const redoStack = [];
+
+  // ---------- Theme ----------
+  function applyTheme(theme) {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }
+
+  function getCurrentTheme() {
+    return document.documentElement.classList.contains("dark")
+      ? "dark"
+      : "light";
+  }
+
+  function toggleTheme() {
+    const next = getCurrentTheme() === "dark" ? "light" : "dark";
+    applyTheme(next);
+    // Save into existing settings object
+    const settings = Storage.loadSettings() || {};
+    settings.theme = next;
+    Storage.saveSettings(settings);
+    // Redraw white background so canvas matches theme visually (optional)
+    // we keep canvas white regardless — pure UX choice
+  }
 
   // ---------- Colors UI ----------
   function buildColorSwatches() {
@@ -293,6 +316,7 @@
 
   // ---------- Actions ----------
   function bindActions() {
+    themeToggle?.addEventListener("click", toggleTheme);
     document.getElementById("clear").addEventListener("click", () => {
       clearCanvas();
       pushHistory();
@@ -377,12 +401,14 @@
       color: selectedColor,
       width: brushWidth,
       fill: fillColor.checked,
+      theme: getCurrentTheme(),
     });
   }
 
   // ---------- Load Saved State ----------
   function loadSavedState() {
     const settings = Storage.loadSettings();
+    if (settings?.theme) applyTheme(settings.theme);
     if (!settings) return;
 
     selectedTool = settings.tool || "brush";
