@@ -265,6 +265,40 @@
     fillColor.checked ? ctx.fill() : ctx.stroke();
   }
 
+  // ---------- Line & Arrow ----------
+  function drawLine(x, y) {
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  }
+
+  function drawArrow(x, y) {
+    // Draw the shaft
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+
+    // Arrow head geometry
+    const headLength = Math.max(12, brushWidth * 2.5);
+    const angle = Math.atan2(y - startY, x - startX);
+
+    // Two lines forming the arrowhead
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(
+      x - headLength * Math.cos(angle - Math.PI / 7),
+      y - headLength * Math.sin(angle - Math.PI / 7),
+    );
+    ctx.moveTo(x, y);
+    ctx.lineTo(
+      x - headLength * Math.cos(angle + Math.PI / 7),
+      y - headLength * Math.sin(angle + Math.PI / 7),
+    );
+    ctx.stroke();
+  }
+
   // ---------- Pointer Events ----------
   function bindDrawing() {
     canvas.addEventListener("pointerdown", (e) => {
@@ -275,6 +309,8 @@
       startY = y;
 
       ctx.lineWidth = brushWidth;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
       ctx.strokeStyle = selectedTool === "eraser" ? "#ffffff" : selectedColor;
       ctx.fillStyle = selectedColor;
 
@@ -300,6 +336,10 @@
         drawCircle(x, y);
       } else if (selectedTool === "triangle") {
         drawTriangle(x, y);
+      } else if (selectedTool === "line") {
+        drawLine(x, y);
+      } else if (selectedTool === "arrow") {
+        drawArrow(x, y);
       }
     });
 
