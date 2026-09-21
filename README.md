@@ -182,7 +182,7 @@ PoyberPaint/
 ## 🤝 Contributing
 
 Contributions, issues, and feature requests are welcome!
-Feel free to check the issues page.
+Feel free to check the [issues]([https://ashkanpoyber.github.io/PoyberPaint/](https://github.com/ashkanpoyber/PoyberPaint/issues)) page.
 
 If you like this project, please consider giving it a ⭐
 
