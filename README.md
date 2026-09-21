@@ -155,17 +155,29 @@ PoyberPaint/
 ## 🗺️ Roadmap
 
 ☑ Brush, eraser, shapes
+
 ☑ Line & arrow tools
+
 ☑ Undo / redo
+
 ☑ Save as PNG
+
 ☑ Responsive dark UI
+
 ☑ Light / dark theme toggle
+
 ☑ LocalStorage persistence
+
 □ Text tool
+
 □ Flood fill (bucket)
+
 □ Layer system
+
 □ Export to SVG
+
 □ Background image upload
+
 
 ## 🤝 Contributing
 
