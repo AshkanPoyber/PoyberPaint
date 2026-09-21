@@ -139,17 +139,29 @@ Then open `index.html` in your browser — no build step needed.
 ## 📂 Project Structure
 
 PoyberPaint/
+
 ├── index.html # Main app
+
 ├── css/
+
 │ └── style.css # Custom styles
+
 ├── js/
+
 │ ├── storage.js # LocalStorage module
+
 │ └── app.js # Main logic
+
 ├── assets/
+
 │ ├── favicon.svg
+
 │ ├── preview.png
+
 │ └── demo.gif
+
 ├── LICENSE
+
 └── README.md
 
 ## 🗺️ Roadmap
