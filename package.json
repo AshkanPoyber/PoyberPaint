@@ -1,0 +1,25 @@
+{
+  "name": "poyberpaint",
+  "version": "1.0.0",
+  "description": "A modern, lightweight paint & drawing web app built with vanilla JavaScript and TailwindCSS.",
+  "keywords": [
+    "paint",
+    "drawing",
+    "canvas",
+    "vanilla-javascript",
+    "tailwindcss"
+  ],
+  "author": "MohammadReza Dalili (AshkanPoyber)",
+  "license": "MIT",
+  "homepage": "https://ashkanpoyber.github.io/PoyberPaint/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ashkanpoyber/PoyberPaint.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ashkanpoyber/PoyberPaint/issues"
+  },
+  "scripts": {
+    "start": "npx serve ."
+  }
+}
