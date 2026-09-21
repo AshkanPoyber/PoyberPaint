@@ -200,7 +200,7 @@ If you like this project, please consider giving it a ⭐
 
 ## 📄 License
 
-This project is licensed under the MIT License — see the LICENSE file for details.
+This project is licensed under the MIT [License](https://./LICENSE) — see the LICENSE file for details.
 
 ## 👤 Author
 
