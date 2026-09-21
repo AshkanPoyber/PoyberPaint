@@ -29,13 +29,15 @@ Draw. Sketch. Create.
 <tr>
 <td width="50%">
 
-### 🎨 Drawing
+### 🎨 Drawing Tools
 
-- 🖌️ **Brush & Eraser** — smooth freehand drawing
-- 📏 **Line & Arrow** — with dynamic arrowheads
+- 🖌️ **Brush** — smooth freehand drawing
+- 🧽 **Eraser** — clean up your canvas
+- ✍️ **Text** — click, type, and place text anywhere
+- 📏 **Line** — draw straight lines
+- ➡️ **Arrow** — with dynamic arrowhead geometry
 - 🔷 **Shapes** — rectangle, circle, triangle
-- 🎯 **Adjustable size** — from 1px to 60px
-- 🎨 **Color palette** — 10 presets + custom picker
+- 🪣 **Flood Fill** — BFS-based bucket tool
 
 </td>
 <td width="50%">
@@ -79,7 +81,7 @@ Draw. Sketch. Create.
 |   **Logic**   | Vanilla JavaScript (ES6+)      |
 | **Rendering** | HTML5 Canvas API               |
 |   **Icons**   | Inline SVG                     |
-|   **Font**    | Inter (Google Fonts)           |
+|   **Font**    | Inter + JetBrains Mono         |
 |  **Storage**  | LocalStorage                   |
 |  **Hosting**  | GitHub Pages                   |
 
@@ -91,10 +93,12 @@ Draw. Sketch. Create.
 
 Building PoyberPaint helped me practice:
 
-- 🎨 **Canvas API** — `getImageData`, `putImageData`, paths, transforms, `drawImage`
+- 🎨 **Canvas API** — `getImageData`, `putImageData`, paths, transforms, `fillText`
+- 🪣 **Flood Fill algorithm** — BFS traversal with anti-alias tolerance
 - 🖱️ **Pointer Events** — unified mouse / touch / stylus handling with `setPointerCapture`
 - 🖥️ **DPR-aware rendering** — crisp output on retina displays using `devicePixelRatio`
 - 📐 **Vector math** — arrowhead geometry via `Math.atan2` and trigonometry
+- ✍️ **Hybrid DOM + Canvas** — floating `<input>` for text, committed to canvas
 - 🗂️ **State management** — undo/redo stack with bounded history, no framework
 - 💽 **Persistence** — canvas + settings via `LocalStorage` with graceful fallbacks
 - ⏱️ **Debouncing** — smooth canvas resize handling
@@ -166,41 +170,40 @@ PoyberPaint/
 
 ## 🗺️ Roadmap
 
-☑ Brush, eraser, shapes
+☑Brush, eraser, shapes
 
-☑ Line & arrow tools
+☑Line & arrow tools
 
-☑ Undo / redo
+☑Text tool
 
-☑ Save as PNG
+☑Flood fill (bucket)
 
-☑ Responsive dark UI
+☑Undo / redo
 
-☑ Light / dark theme toggle
+☑Save as PNG
 
-☑ LocalStorage persistence
+☑Responsive dark UI
 
-□ Text tool
+☑Light / dark theme toggle
 
-□ Flood fill (bucket)
+☑LocalStorage persistence
 
-□ Layer system
+□Layer system
 
-□ Export to SVG
+□Export to SVG
 
-□ Background image upload
-
+□Background image upload
 
 ## 🤝 Contributing
 
 Contributions, issues, and feature requests are welcome!
-Feel free to check the [issues](https://github.com/ashkanpoyber/PoyberPaint/issues) page.
+Feel free to check the [issues page](https://github.com/ashkanpoyber/PoyberPaint/issues).
 
 If you like this project, please consider giving it a ⭐
 
 ## 📄 License
 
-This project is licensed under the MIT [License](https://./LICENSE) — see the LICENSE file for details.
+This project is licensed under the MIT License — see the [LICENSE](https://./LICENSE) file for details.
 
 ## 👤 Author
 
@@ -208,10 +211,13 @@ This project is licensed under the MIT [License](https://./LICENSE) — see the 
 
 MohammadReza Dalili (AshkanPoyber)
 
+https://img.shields.io/badge/GitHub-ashkanpoyber-181717?style=for-the-badge&logo=github
+https://img.shields.io/badge/Portfolio-ashkanpoyber.github.io-6366f1?style=for-the-badge&logo=googlechrome&logoColor=white
+
 </div><div align="center">
 
 ⭐ If you like this project, give it a star! ⭐
 
 Made with ❤️ by AshkanPoyber
 
-</div>
+</div> ```
