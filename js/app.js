@@ -375,6 +375,97 @@
     textInputEl = null;
   }
 
+  // ---------- Flood Fill ----------
+  function floodFill(cssX, cssY, fillColorHex) {
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor(cssX * DPR);
+    const y = Math.floor(cssY * DPR);
+
+    const W = canvas.width;
+    const H = canvas.height;
+
+    // Bounds Check
+    if (x < 0 || y < 0 || x >= W || y >= H) return;
+
+    // Get Oixel Data
+    const imageData = ctx.getImageData(0, 0, W, H);
+    const data = imageData.data;
+
+    // Helper : Convert Hex To [ r,g,b,a ]
+    const target = hexToRgba(fillColorHex);
+    if (!target) return;
+
+    // Color At Clicked Pixel
+    const idx = (y * W + x) * 4;
+    const startColor = [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]];
+
+    // If Same Color → Nothing To Do
+    if (colorsEqual(startColor, target)) return;
+
+    // BFS With a Stack ( Faster Than Recursion , No Stack Overflow )
+    const stack = [[x, y]];
+    const visited = new Uint8Array(W * H);
+    const tolerance = 30; // Anti-Alias Tolerance
+
+    function matches(pos) {
+      const i = pos * 4;
+      return (
+        Math.abs(data[i] - startColor[0]) <= tolerance &&
+        Math.abs(data[i + 1] - startColor[1]) <= tolerance &&
+        Math.abs(data[i + 2] - startColor[2]) <= tolerance &&
+        Math.abs(data[i + 3] - startColor[3]) <= tolerance
+      );
+    }
+
+    while (stack.length) {
+      const [cx, cy] = stack.pop();
+      const pos = cy * W + cx;
+
+      if (cx < 0 || cy < 0 || cx >= W || cy >= H) continue;
+      if (visited[pos]) continue;
+      if (!matches(pos)) continue;
+
+      visited[pos] = 1;
+      const i = pos * 4;
+      data[i] = target[0];
+      data[i + 1] = target[1];
+      data[i + 2] = target[2];
+      data[i + 3] = target[3];
+
+      // 4-Way Neighbors
+      stack.push([cx + 1, cy]);
+      stack.push([cx - 1, cy]);
+      stack.push([cx, cy + 1]);
+      stack.push([cx, cy - 1]);
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  // Hex String → [ r,g,b,a ]
+  function hexToRgba(hex) {
+    if (!hex) return null;
+    hex = hex.replace("#", "").trim();
+
+    // Support #rgb & #rrggbb
+    if (hex.length === 3) {
+      hex = hex
+        .split("")
+        .map((c) => c + c)
+        .join("");
+    }
+    if (hex.length !== 6) return null;
+
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return [r, g, b, 255];
+  }
+
+  function colorsEqual(a, b) {
+    return a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
+  }
+
   // ---------- Pointer Events ----------
   function bindDrawing() {
     canvas.addEventListener("pointerdown", (e) => {
@@ -382,6 +473,14 @@
       if (selectedTool === "text") {
         e.preventDefault();
         openTextInput(e);
+        return;
+      }
+      // 👇 If Fill Tool Is Active → Flood Fill
+      if (selectedTool === "fill") {
+        e.preventDefault();
+        const { x, y } = getPos(e);
+        floodFill(x, y, selectedColor);
+        pushHistory();
         return;
       }
       canvas.setPointerCapture(e.pointerId);

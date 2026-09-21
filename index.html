@@ -285,7 +285,7 @@
             >
               Options
             </h2>
-            <div class="grid grid-cols-3 lg:grid-cols-2 gap-1.5 mb-3">
+            <div class="grid grid-cols-4 lg:grid-cols-2 gap-1.5 mb-3">
               <button
                 data-tool="brush"
                 class="tool-btn active group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
@@ -326,7 +326,28 @@
                 <span class="text-[10px]">Eraser</span>
               </button>
 
-              <!-- 👇 جدید: Text -->
+              <!-- 👇 جدید: Fill -->
+              <button
+                data-tool="fill"
+                class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 12l7-7 8 8-7 7-8-8z" />
+                  <path d="M14 5l3-3 4 4-3 3" />
+                  <path d="M5 19c-1 0-2 1-2 2 0 0 3 0 3-2z" />
+                </svg>
+                <span class="text-[10px]">Fill</span>
+              </button>
+
+              <!-- Text (بدون تغییر) -->
               <button
                 data-tool="text"
                 class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
