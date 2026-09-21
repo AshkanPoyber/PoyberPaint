@@ -136,7 +136,7 @@ Then open `index.html` in your browser — no build step needed.
 
 `npx serve .`
 
-# or
+ or
 
 `python -m http.server 8000`
 
@@ -211,13 +211,10 @@ This project is licensed under the MIT License — see the [LICENSE](https://./L
 
 MohammadReza Dalili (AshkanPoyber)
 
-https://img.shields.io/badge/GitHub-ashkanpoyber-181717?style=for-the-badge&logo=github
-https://img.shields.io/badge/Portfolio-ashkanpoyber.github.io-6366f1?style=for-the-badge&logo=googlechrome&logoColor=white
-
 </div><div align="center">
 
 ⭐ If you like this project, give it a star! ⭐
 
 Made with ❤️ by AshkanPoyber
 
-</div> ```
+</div>
