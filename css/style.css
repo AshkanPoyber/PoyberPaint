@@ -101,3 +101,29 @@ html:not(.dark) #themeIconMoon {
   opacity: 1;
   transform: rotate(0deg) scale(1);
 }
+
+/* ===== Floating text input ===== */
+#textInput {
+  position: absolute;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid #6366f1;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 500;
+  color: #0b0f17;
+  outline: none;
+  min-width: 100px;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
+  transform: translate(-2px, -50%);
+}
+
+html.dark #textInput {
+  background: rgba(17, 24, 39, 0.95);
+  color: #f1f5f9;
+}
+
+#textInput::placeholder {
+  color: #94a3b8;
+}

@@ -34,6 +34,10 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
 
     <script>
       tailwind.config = {
@@ -281,10 +285,10 @@
             >
               Options
             </h2>
-            <div class="grid grid-cols-4 lg:grid-cols-2 gap-1.5 mb-3">
+            <div class="grid grid-cols-3 lg:grid-cols-2 gap-1.5 mb-3">
               <button
                 data-tool="brush"
-                class="tool-btn active group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-white/5 hover:text-slate-200 transition"
+                class="tool-btn active group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -305,7 +309,7 @@
               </button>
               <button
                 data-tool="eraser"
-                class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-white/5 hover:text-slate-200 transition"
+                class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -320,6 +324,27 @@
                   <path d="M20 20h-4" />
                 </svg>
                 <span class="text-[10px]">Eraser</span>
+              </button>
+
+              <!-- 👇 جدید: Text -->
+              <button
+                data-tool="text"
+                class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M4 7V5h16v2" />
+                  <path d="M12 5v14" />
+                  <path d="M9 19h6" />
+                </svg>
+                <span class="text-[10px]">Text</span>
               </button>
             </div>
 
@@ -467,7 +492,10 @@
               ✓ Saved
             </span>
           </div>
-          <div class="relative rounded-xl overflow-hidden bg-white">
+          <div
+            id="canvasWrapper"
+            class="relative rounded-xl overflow-hidden bg-white"
+          >
             <canvas
               id="board"
               class="block w-full h-[60vh] sm:h-[72vh]"

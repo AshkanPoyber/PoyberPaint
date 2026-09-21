@@ -1,5 +1,5 @@
 /**
- * PoyberPaint — A modern paint & drawing web app.
+ * PoyberPaint — A Modern Paint & Drawing Web App.
  * @author AshkanPoyber
  * @version 1.1.0
  */
@@ -19,6 +19,7 @@
   const redoBtn = document.getElementById("redo");
   const saveIndicator = document.getElementById("saveIndicator");
   const themeToggle = document.getElementById("themeToggle");
+  const canvasWrapper = document.getElementById("canvasWrapper");
 
   // ---------- Constants ----------
   const PALETTE = [
@@ -45,6 +46,7 @@
   let startY = 0;
   let snapshot = null;
   let saveIndicatorTimer = null;
+  let textInputEl = null;
 
   const history = [];
   const redoStack = [];
@@ -117,6 +119,8 @@
   function bindTools() {
     toolBtns.forEach((btn) =>
       btn.addEventListener("click", () => {
+        // Close Any Open Text Input
+        if (textInputEl) closeTextInput();
         document.querySelector(".tool-btn.active")?.classList.remove("active");
         btn.classList.add("active");
         selectedTool = btn.dataset.tool;
@@ -299,9 +303,87 @@
     ctx.stroke();
   }
 
+  // ---------- Text Tool ----------
+  function openTextInput(e) {
+    // Don't Open If One Is Already Open
+    if (textInputEl) {
+      textInputEl.focus();
+      return;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Create Input
+    const input = document.createElement("input");
+    input.type = "text";
+    input.id = "textInput";
+    input.placeholder = "Type & press Enter…";
+    input.maxLength = 100;
+
+    // Position It
+    input.style.left = x + "px";
+    input.style.top = y + "px";
+    input.style.fontSize = Math.max(14, brushWidth * 2.5) + "px";
+    input.style.color = selectedColor;
+
+    // Append To Canvas Wrapper (Relative Positioned )
+    canvasWrapper.appendChild(input);
+    input.focus();
+
+    textInputEl = input;
+
+    // Commit On Enter
+    input.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        commitText(x, y, input.value);
+        closeTextInput();
+      } else if (ev.key === "Escape") {
+        closeTextInput();
+      }
+    });
+
+    // Commit On Blur ( Click Outside )
+    input.addEventListener("blur", () => {
+      if (input.value.trim()) {
+        commitText(x, y, input.value);
+      }
+      closeTextInput();
+    });
+  }
+
+  function commitText(x, y, text) {
+    if (!text || !text.trim()) return;
+
+    const fontSize = Math.max(14, brushWidth * 2.5);
+    ctx.font = `500 ${fontSize}px "JetBrains Mono", monospace`;
+    ctx.fillStyle = selectedColor;
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+
+    ctx.fillText(text, x, y);
+
+    // Push To History & Save
+    pushHistory();
+  }
+
+  function closeTextInput() {
+    if (!textInputEl) return;
+    textInputEl.remove();
+    textInputEl = null;
+  }
+
   // ---------- Pointer Events ----------
   function bindDrawing() {
     canvas.addEventListener("pointerdown", (e) => {
+      // If Text Tool Is Active → Open Floating Input
+      if (selectedTool === "text") {
+        e.preventDefault();
+        openTextInput(e);
+        return;
+      }
       canvas.setPointerCapture(e.pointerId);
       isDrawing = true;
       const { x, y } = getPos(e);
