@@ -50,7 +50,6 @@
   let snapshot = null;
   let saveIndicatorTimer = null;
   let textInputEl = null;
-  let backgroundImage = null;
   let backgroundDataURL = null;
 
   const history = [];
@@ -632,9 +631,8 @@
     });
 
     clearBgBtn.addEventListener("click", () => {
-      if (!backgroundImage) return;
-      if (!confirm("Remove background image? Your drawing will be cleared."))
-        return;
+      if (!backgroundDataURL) return;
+      if (!confirm("Remove background image?")) return;
       removeBackground();
     });
 
