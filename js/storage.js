@@ -11,6 +11,7 @@ const Storage = (() => {
     CANVAS: "poyberpaint:canvas",
     SETTINGS: "poyberpaint:settings",
     VERSION: "poyberpaint:version",
+    BACKGROUND: "poyberpaint:background",
   };
 
   const CURRENT_VERSION = "1.0.0";
@@ -74,6 +75,28 @@ const Storage = (() => {
     }
   }
 
+  // ---------- Background ----------
+  function saveBackground(dataURL) {
+    if (!available) return false;
+    try {
+      localStorage.setItem(KEYS.BACKGROUND, dataURL);
+      return true;
+    } catch (e) {
+      console.warn("PoyberPaint: background too large for storage.");
+      return false;
+    }
+  }
+
+  function loadBackground() {
+    if (!available) return null;
+    return localStorage.getItem(KEYS.BACKGROUND);
+  }
+
+  function clearBackground() {
+    if (!available) return;
+    localStorage.removeItem(KEYS.BACKGROUND);
+  }
+
   // ---------- Public API ----------
   return {
     available,
@@ -82,5 +105,8 @@ const Storage = (() => {
     clearCanvas,
     saveSettings,
     loadSettings,
+    saveBackground,
+    loadBackground,
+    clearBackground,
   };
 })();

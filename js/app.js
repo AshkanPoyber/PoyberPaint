@@ -20,6 +20,8 @@
   const saveIndicator = document.getElementById("saveIndicator");
   const themeToggle = document.getElementById("themeToggle");
   const canvasWrapper = document.getElementById("canvasWrapper");
+  const bgUpload = document.getElementById("bgUpload");
+  const clearBgBtn = document.getElementById("clearBg");
 
   // ---------- Constants ----------
   const PALETTE = [
@@ -47,6 +49,8 @@
   let snapshot = null;
   let saveIndicatorTimer = null;
   let textInputEl = null;
+  let backgroundImage = null;
+  let backgroundDataURL = null;
 
   const history = [];
   const redoStack = [];
@@ -165,6 +169,11 @@
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, rect.width, rect.height);
 
+    // Draw background image if exists
+    if (backgroundImage) {
+      drawBackgroundImage(rect.width, rect.height);
+    }
+
     // Restore previous content (draw scaled to fit)
     if (prev) {
       const off = document.createElement("canvas");
@@ -192,6 +201,107 @@
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, rect.width, rect.height);
     ctx.restore();
+  }
+
+  // ---------- Background Image ----------
+  function drawBackgroundImage(w, h) {
+    if (!backgroundImage) return;
+
+    // Cover-fit: scale image to cover canvas, centered
+    const iw = backgroundImage.naturalWidth;
+    const ih = backgroundImage.naturalHeight;
+    const scale = Math.max(w / iw, h / ih);
+    const dw = iw * scale;
+    const dh = ih * scale;
+    const dx = (w - dw) / 2;
+    const dy = (h - dh) / 2;
+
+    ctx.drawImage(backgroundImage, dx, dy, dw, dh);
+  }
+
+  function handleBackgroundUpload(file) {
+    if (!file || !file.type.startsWith("image/")) {
+      alert("Please choose an image file.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        // Resize/compress to fit in LocalStorage
+        const compressed = compressImage(img, 1200, 0.75);
+
+        backgroundImage = img;
+        backgroundDataURL = compressed;
+
+        // Save
+        const ok = Storage.saveBackground(compressed);
+        if (!ok) {
+          alert(
+            "Image is too large to save. It will still work for this session.",
+          );
+        }
+
+        // Redraw everything
+        setupCanvas();
+        // Restore drawings on top
+        if (history.length) {
+          const current = history[history.length - 1];
+          ctx.putImageData(current, 0, 0);
+        }
+
+        // Show remove button
+        clearBgBtn.classList.remove("hidden");
+
+        // Push history so background is part of state
+        pushHistory();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function compressImage(img, maxSize, quality) {
+    const canvas = document.createElement("canvas");
+    let w = img.naturalWidth;
+    let h = img.naturalHeight;
+
+    // Scale down if larger than maxSize
+    if (w > maxSize || h > maxSize) {
+      const ratio = Math.min(maxSize / w, maxSize / h);
+      w = Math.floor(w * ratio);
+      h = Math.floor(h * ratio);
+    }
+
+    canvas.width = w;
+    canvas.height = h;
+    const c = canvas.getContext("2d");
+    c.drawImage(img, 0, 0, w, h);
+
+    return canvas.toDataURL("image/jpeg", quality);
+  }
+
+  function removeBackground() {
+    backgroundImage = null;
+    backgroundDataURL = null;
+    Storage.clearBackground();
+    clearBgBtn.classList.add("hidden");
+
+    // Redraw canvas
+    setupCanvas();
+    if (history.length) {
+      const current = history[history.length - 1];
+      // We need to redraw: white bg + current drawing (without old background)
+      // Simplest: clear, then redraw from history
+      // But history includes the background... so easiest: clear & fresh start
+      // Let's just clear history since background was part of it
+    }
+
+    // Reset history because old states had the background baked in
+    history.length = 0;
+    redoStack.length = 0;
+    pushHistory();
   }
 
   // ---------- History ----------
@@ -543,6 +653,19 @@
       pushHistory();
     });
 
+    bgUpload.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (file) handleBackgroundUpload(file);
+      e.target.value = ""; // Reset so same file can be picked again
+    });
+
+    clearBgBtn.addEventListener("click", () => {
+      if (!backgroundImage) return;
+      if (!confirm("Remove background image? Your drawing will be cleared."))
+        return;
+      removeBackground();
+    });
+
     document.getElementById("save").addEventListener("click", () => {
       // Ensure background is white before export
       const exportCanvas = document.createElement("canvas");
@@ -683,6 +806,23 @@
     bindKeyboard();
 
     setupCanvas();
+    // Load background image if exists
+    const bgData = Storage.loadBackground();
+    if (bgData) {
+      await new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          backgroundImage = img;
+          backgroundDataURL = bgData;
+          clearBgBtn.classList.remove("hidden");
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = bgData;
+      });
+      // Redraw with background
+      setupCanvas();
+    }
     await loadSavedCanvas();
     pushHistory();
 
