@@ -22,6 +22,7 @@
   const canvasWrapper = document.getElementById("canvasWrapper");
   const bgUpload = document.getElementById("bgUpload");
   const clearBgBtn = document.getElementById("clearBg");
+  const bgLayer = document.getElementById("bgLayer");
 
   // ---------- Constants ----------
   const PALETTE = [
@@ -142,12 +143,12 @@
   }
 
   // ---------- Canvas Setup ----------
-  function setupCanvas() {
+  function setupCanvas(preserveContent = true) {
     const rect = canvas.getBoundingClientRect();
 
     // Preserve previous drawing when resizing
     let prev = null;
-    if (canvas.width && canvas.height) {
+    if (preserveContent && canvas.width && canvas.height) {
       try {
         prev = ctx.getImageData(0, 0, canvas.width, canvas.height);
       } catch {
@@ -164,15 +165,6 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-
-    // White background in CSS pixels
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, rect.width, rect.height);
-
-    // Draw background image if exists
-    if (backgroundImage) {
-      drawBackgroundImage(rect.width, rect.height);
-    }
 
     // Restore previous content (draw scaled to fit)
     if (prev) {
@@ -195,30 +187,13 @@
   }
 
   function clearCanvas() {
-    const rect = canvas.getBoundingClientRect();
     ctx.save();
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, rect.width, rect.height);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.restore();
   }
 
   // ---------- Background Image ----------
-  function drawBackgroundImage(w, h) {
-    if (!backgroundImage) return;
-
-    // Cover-fit: scale image to cover canvas, centered
-    const iw = backgroundImage.naturalWidth;
-    const ih = backgroundImage.naturalHeight;
-    const scale = Math.max(w / iw, h / ih);
-    const dw = iw * scale;
-    const dh = ih * scale;
-    const dx = (w - dw) / 2;
-    const dy = (h - dh) / 2;
-
-    ctx.drawImage(backgroundImage, dx, dy, dw, dh);
-  }
-
   function handleBackgroundUpload(file) {
     if (!file || !file.type.startsWith("image/")) {
       alert("Please choose an image file.");
@@ -229,11 +204,13 @@
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        // Resize/compress to fit in LocalStorage
+        // Compress for storage
         const compressed = compressImage(img, 1200, 0.75);
 
-        backgroundImage = img;
         backgroundDataURL = compressed;
+
+        // Apply to DOM layer (not canvas)
+        applyBackgroundToLayer(compressed);
 
         // Save
         const ok = Storage.saveBackground(compressed);
@@ -243,13 +220,10 @@
           );
         }
 
-        // Redraw everything (setupCanvas internally preserves prev content)
-        setupCanvas();
-
         // Show remove button
         clearBgBtn.classList.remove("hidden");
 
-        // Push history so background is part of state
+        // Push history so background persists across undo/redo
         pushHistory();
       };
       img.src = e.target.result;
@@ -277,26 +251,22 @@
     return canvas.toDataURL("image/jpeg", quality);
   }
 
+  function applyBackgroundToLayer(dataURL) {
+    if (!dataURL) {
+      bgLayer.classList.add("hidden");
+      bgLayer.removeAttribute("src");
+      return;
+    }
+    bgLayer.src = dataURL;
+    bgLayer.classList.remove("hidden");
+  }
+
   function removeBackground() {
     backgroundImage = null;
     backgroundDataURL = null;
     Storage.clearBackground();
+    applyBackgroundToLayer(null);
     clearBgBtn.classList.add("hidden");
-
-    // Redraw canvas
-    setupCanvas();
-    if (history.length) {
-      const current = history[history.length - 1];
-      // We need to redraw: white bg + current drawing (without old background)
-      // Simplest: clear, then redraw from history
-      // But history includes the background... so easiest: clear & fresh start
-      // Let's just clear history since background was part of it
-    }
-
-    // Reset history because old states had the background baked in
-    history.length = 0;
-    redoStack.length = 0;
-    pushHistory();
   }
 
   // ---------- History ----------
@@ -597,8 +567,15 @@
       ctx.lineWidth = brushWidth;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      ctx.strokeStyle = selectedTool === "eraser" ? "#ffffff" : selectedColor;
       ctx.fillStyle = selectedColor;
+
+      if (selectedTool === "eraser") {
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.strokeStyle = "rgba(0,0,0,1)";
+      } else {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.strokeStyle = selectedColor;
+      }
 
       snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
     });
@@ -662,19 +639,48 @@
     });
 
     document.getElementById("save").addEventListener("click", () => {
-      // Ensure background is white before export
       const exportCanvas = document.createElement("canvas");
       exportCanvas.width = canvas.width;
       exportCanvas.height = canvas.height;
       const exCtx = exportCanvas.getContext("2d");
+
+      // 1) White base
       exCtx.fillStyle = "#ffffff";
       exCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-      exCtx.drawImage(canvas, 0, 0);
 
-      const link = document.createElement("a");
-      link.download = `poyberpaint-${Date.now()}.png`;
-      link.href = exportCanvas.toDataURL("image/png");
-      link.click();
+      // 2) Draw the background image (if any) — cover-fit
+      if (backgroundDataURL) {
+        const img = new Image();
+        img.onload = () => {
+          const scale = Math.max(
+            exportCanvas.width / img.width,
+            exportCanvas.height / img.height,
+          );
+          const dw = img.width * scale;
+          const dh = img.height * scale;
+          const dx = (exportCanvas.width - dw) / 2;
+          const dy = (exportCanvas.height - dh) / 2;
+          exCtx.drawImage(img, dx, dy, dw, dh);
+
+          // 3) Draw the drawing on top
+          exCtx.drawImage(canvas, 0, 0);
+
+          // 4) Download
+          const link = document.createElement("a");
+          link.download = `poyberpaint-${Date.now()}.png`;
+          link.href = exportCanvas.toDataURL("image/png");
+          link.click();
+        };
+        img.src = backgroundDataURL;
+      } else {
+        // No background — just draw canvas
+        exCtx.drawImage(canvas, 0, 0);
+
+        const link = document.createElement("a");
+        link.download = `poyberpaint-${Date.now()}.png`;
+        link.href = exportCanvas.toDataURL("image/png");
+        link.click();
+      }
     });
 
     document.getElementById("reset").addEventListener("click", () => {
@@ -801,23 +807,15 @@
     bindKeyboard();
 
     setupCanvas();
-    // Load background image if exists
+
+    // Load background image into DOM layer (not canvas)
     const bgData = Storage.loadBackground();
     if (bgData) {
-      await new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          backgroundImage = img;
-          backgroundDataURL = bgData;
-          clearBgBtn.classList.remove("hidden");
-          resolve();
-        };
-        img.onerror = () => resolve();
-        img.src = bgData;
-      });
-      // Redraw with background
-      setupCanvas();
+      applyBackgroundToLayer(bgData);
+      backgroundDataURL = bgData;
+      clearBgBtn.classList.remove("hidden");
     }
+
     await loadSavedCanvas();
     pushHistory();
 

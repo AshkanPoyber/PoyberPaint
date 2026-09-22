@@ -46,6 +46,7 @@ html:not(.dark) body {
 canvas {
   touch-action: none;
   cursor: crosshair;
+  background: transparent;
 }
 
 /* ===== Active tool ===== */

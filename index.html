@@ -561,9 +561,16 @@
             id="canvasWrapper"
             class="relative rounded-xl overflow-hidden bg-white"
           >
+            <!-- Background Image Layer (Behind Canvas) -->
+            <img
+              id="bgLayer"
+              class="absolute inset-0 w-full h-full object-cover pointer-events-none hidden"
+              alt=""
+            />
+            <!-- Canvas (Drawing Layer) -->
             <canvas
               id="board"
-              class="block w-full h-[60vh] sm:h-[72vh]"
+              class="relative block w-full h-[60vh] sm:h-[72vh]"
             ></canvas>
           </div>
         </section>
