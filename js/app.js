@@ -243,13 +243,8 @@
           );
         }
 
-        // Redraw everything
+        // Redraw everything (setupCanvas internally preserves prev content)
         setupCanvas();
-        // Restore drawings on top
-        if (history.length) {
-          const current = history[history.length - 1];
-          ctx.putImageData(current, 0, 0);
-        }
 
         // Show remove button
         clearBgBtn.classList.remove("hidden");
