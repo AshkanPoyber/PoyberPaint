@@ -23,6 +23,7 @@
   const bgUpload = document.getElementById("bgUpload");
   const clearBgBtn = document.getElementById("clearBg");
   const bgLayer = document.getElementById("bgLayer");
+  const bgControls = document.getElementById("bgControls");
 
   // ---------- Constants ----------
   const PALETTE = [
@@ -51,6 +52,9 @@
   let saveIndicatorTimer = null;
   let textInputEl = null;
   let backgroundDataURL = null;
+  let bgTransform = { x: 0, y: 0, scale: 1 };
+  let isPanningBg = false;
+  let bgPanStart = { x: 0, y: 0 };
 
   const history = [];
   const redoStack = [];
@@ -123,11 +127,17 @@
   function bindTools() {
     toolBtns.forEach((btn) =>
       btn.addEventListener("click", () => {
-        // Close Any Open Text Input
         if (textInputEl) closeTextInput();
         document.querySelector(".tool-btn.active")?.classList.remove("active");
         btn.classList.add("active");
         selectedTool = btn.dataset.tool;
+
+        // Update cursor class for move-bg
+        document.body.classList.toggle(
+          "tool-move-bg",
+          selectedTool === "move-bg",
+        );
+
         persistSettings();
       }),
     );
@@ -221,6 +231,7 @@
 
         // Show remove button
         clearBgBtn.classList.remove("hidden");
+        bgControls.classList.remove("hidden");
 
         // Push history so background persists across undo/redo
         pushHistory();
@@ -258,13 +269,44 @@
     }
     bgLayer.src = dataURL;
     bgLayer.classList.remove("hidden");
+    applyBgTransform();
+  }
+
+  // ---------- Background Transform ----------
+  function applyBgTransform() {
+    bgLayer.style.transform = `translate(${bgTransform.x}px, ${bgTransform.y}px) scale(${bgTransform.scale})`;
+    Storage.saveBgTransform(bgTransform);
+  }
+
+  function resetBgTransform() {
+    bgTransform = { x: 0, y: 0, scale: 1 };
+    applyBgTransform();
+  }
+
+  function zoomBg(factor) {
+    const newScale = Math.max(0.3, Math.min(5, bgTransform.scale * factor));
+    bgTransform.scale = newScale;
+    applyBgTransform();
+  }
+
+  function loadBgTransform() {
+    const saved = Storage.loadBgTransform();
+    if (saved && typeof saved.x === "number") {
+      bgTransform = saved;
+    } else {
+      bgTransform = { x: 0, y: 0, scale: 1 };
+    }
+    applyBgTransform();
   }
 
   function removeBackground() {
     backgroundDataURL = null;
     Storage.clearBackground();
+    Storage.clearBgTransform();
+    resetBgTransform();
     applyBackgroundToLayer(null);
     clearBgBtn.classList.add("hidden");
+    bgControls.classList.add("hidden");
   }
 
   // ---------- History ----------
@@ -542,13 +584,24 @@
   // ---------- Pointer Events ----------
   function bindDrawing() {
     canvas.addEventListener("pointerdown", (e) => {
+      // 👇 If Move-BG Tool Is Active → Pan The Background
+      if (selectedTool === "move-bg") {
+        if (!backgroundDataURL) return;
+        e.preventDefault();
+        isPanningBg = true;
+        bgPanStart.x = e.clientX - bgTransform.x;
+        bgPanStart.y = e.clientY - bgTransform.y;
+        canvas.setPointerCapture(e.pointerId);
+        return;
+      }
+
       // If Text Tool Is Active → Open Floating Input
       if (selectedTool === "text") {
         e.preventDefault();
         openTextInput(e);
         return;
       }
-      // 👇 If Fill Tool Is Active → Flood Fill
+      // If Fill Tool Is Active → Flood Fill
       if (selectedTool === "fill") {
         e.preventDefault();
         const { x, y } = getPos(e);
@@ -579,6 +632,13 @@
     });
 
     canvas.addEventListener("pointermove", (e) => {
+      // 👇 Pan Background
+      if (isPanningBg) {
+        bgTransform.x = e.clientX - bgPanStart.x;
+        bgTransform.y = e.clientY - bgPanStart.y;
+        applyBgTransform();
+        return;
+      }
       if (!isDrawing) return;
       const { x, y } = getPos(e);
       ctx.putImageData(snapshot, 0, 0);
@@ -605,6 +665,10 @@
     });
 
     const endDraw = () => {
+      if (isPanningBg) {
+        isPanningBg = false;
+        return;
+      }
       if (!isDrawing) return;
       isDrawing = false;
       pushHistory();
@@ -635,6 +699,32 @@
       removeBackground();
     });
 
+    document.getElementById("bgZoomIn").addEventListener("click", () => {
+      if (!backgroundDataURL) return;
+      zoomBg(1.15);
+    });
+
+    document.getElementById("bgZoomOut").addEventListener("click", () => {
+      if (!backgroundDataURL) return;
+      zoomBg(1 / 1.15);
+    });
+
+    document.getElementById("bgReset").addEventListener("click", () => {
+      if (!backgroundDataURL) return;
+      resetBgTransform();
+    });
+
+    // Wheel zoom on the background (only when move-bg is active)
+    canvas.addEventListener(
+      "wheel",
+      (e) => {
+        if (selectedTool !== "move-bg" || !backgroundDataURL) return;
+        e.preventDefault();
+        zoomBg(e.deltaY > 0 ? 0.9 : 1.1);
+      },
+      { passive: false },
+    );
+
     document.getElementById("save").addEventListener("click", () => {
       const exportCanvas = document.createElement("canvas");
       exportCanvas.width = canvas.width;
@@ -645,18 +735,27 @@
       exCtx.fillStyle = "#ffffff";
       exCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
 
-      // 2) Draw the background image (if any) — cover-fit
+      // 2) Draw the background image (if any) with transform
       if (backgroundDataURL) {
         const img = new Image();
         img.onload = () => {
-          const scale = Math.max(
+          const dpr = exportCanvas.width / canvas.getBoundingClientRect().width;
+
+          // Cover-fit base
+          const baseScale = Math.max(
             exportCanvas.width / img.width,
             exportCanvas.height / img.height,
           );
-          const dw = img.width * scale;
-          const dh = img.height * scale;
-          const dx = (exportCanvas.width - dw) / 2;
-          const dy = (exportCanvas.height - dh) / 2;
+
+          // Combine with user transform
+          const totalScale = baseScale * bgTransform.scale;
+          const dw = img.width * totalScale;
+          const dh = img.height * totalScale;
+
+          // Center + user offset
+          const dx = (exportCanvas.width - dw) / 2 + bgTransform.x * dpr;
+          const dy = (exportCanvas.height - dh) / 2 + bgTransform.y * dpr;
+
           exCtx.drawImage(img, dx, dy, dw, dh);
 
           // 3) Draw the drawing on top
@@ -670,7 +769,6 @@
         };
         img.src = backgroundDataURL;
       } else {
-        // No background — just draw canvas
         exCtx.drawImage(canvas, 0, 0);
 
         const link = document.createElement("a");
@@ -771,6 +869,9 @@
     document.querySelectorAll(".swatch").forEach((s) => {
       s.classList.toggle("selected", s.dataset.color === selectedColor);
     });
+
+    // 👇 Set cursor class if move-bg is the selected tool
+    document.body.classList.toggle("tool-move-bg", selectedTool === "move-bg");
   }
 
   // ---------- Load Saved Canvas ----------
@@ -811,6 +912,8 @@
       applyBackgroundToLayer(bgData);
       backgroundDataURL = bgData;
       clearBgBtn.classList.remove("hidden");
+      bgControls.classList.remove("hidden");
+      loadBgTransform();
     }
 
     await loadSavedCanvas();

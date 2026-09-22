@@ -285,7 +285,7 @@
             >
               Options
             </h2>
-            <div class="grid grid-cols-4 lg:grid-cols-2 gap-1.5 mb-3">
+            <div class="grid grid-cols-5 lg:grid-cols-2 gap-1.5 mb-3">
               <button
                 data-tool="brush"
                 class="tool-btn active group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
@@ -325,8 +325,6 @@
                 </svg>
                 <span class="text-[10px]">Eraser</span>
               </button>
-
-              <!-- 👇 جدید: Fill -->
               <button
                 data-tool="fill"
                 class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
@@ -346,8 +344,6 @@
                 </svg>
                 <span class="text-[10px]">Fill</span>
               </button>
-
-              <!-- Text (بدون تغییر) -->
               <button
                 data-tool="text"
                 class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
@@ -366,6 +362,30 @@
                   <path d="M9 19h6" />
                 </svg>
                 <span class="text-[10px]">Text</span>
+              </button>
+
+              <!-- 👇 جدید: Move BG -->
+              <button
+                data-tool="move-bg"
+                class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M5 9l-3 3 3 3" />
+                  <path d="M9 5l3-3 3 3" />
+                  <path d="M15 19l-3 3-3-3" />
+                  <path d="M19 9l3 3-3 3" />
+                  <path d="M2 12h20" />
+                  <path d="M12 2v20" />
+                </svg>
+                <span class="text-[10px]">Move BG</span>
               </button>
             </div>
 
@@ -412,6 +432,63 @@
               </svg>
               Remove Background
             </button>
+
+            <!-- Background controls -->
+            <div id="bgControls" class="mt-1.5 hidden grid grid-cols-3 gap-1.5">
+              <button
+                id="bgZoomOut"
+                title="Zoom out"
+                class="flex items-center justify-center py-1.5 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.3-4.3M8 11h6" />
+                </svg>
+              </button>
+              <button
+                id="bgReset"
+                title="Reset background"
+                class="flex items-center justify-center gap-1 py-1.5 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                  <path d="M3 3v5h5" />
+                </svg>
+                <span class="text-[10px]">Reset</span>
+              </button>
+              <button
+                id="bgZoomIn"
+                title="Zoom in"
+                class="flex items-center justify-center py-1.5 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.3-4.3M11 8v6M8 11h6" />
+                </svg>
+              </button>
+            </div>
 
             <div class="px-1">
               <div class="flex items-center justify-between mb-1.5">

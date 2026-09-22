@@ -128,3 +128,17 @@ html.dark #textInput {
 #textInput::placeholder {
   color: #94a3b8;
 }
+
+/* ===== Move BG cursor ===== */
+body.tool-move-bg canvas {
+  cursor: grab;
+}
+body.tool-move-bg canvas:active {
+  cursor: grabbing;
+}
+
+/* Prevent browser gestures on canvas */
+#bgLayer {
+  user-select: none;
+  -webkit-user-drag: none;
+}

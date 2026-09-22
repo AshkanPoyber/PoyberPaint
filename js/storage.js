@@ -12,6 +12,7 @@ const Storage = (() => {
     SETTINGS: "poyberpaint:settings",
     VERSION: "poyberpaint:version",
     BACKGROUND: "poyberpaint:background",
+    BG_TRANSFORM: "poyberpaint:bgTransform",
   };
 
   const CURRENT_VERSION = "1.0.0";
@@ -97,6 +98,31 @@ const Storage = (() => {
     localStorage.removeItem(KEYS.BACKGROUND);
   }
 
+  // ---------- Background Transform ----------
+  function saveBgTransform(transform) {
+    if (!available) return;
+    try {
+      localStorage.setItem(KEYS.BG_TRANSFORM, JSON.stringify(transform));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function loadBgTransform() {
+    if (!available) return null;
+    try {
+      const raw = localStorage.getItem(KEYS.BG_TRANSFORM);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function clearBgTransform() {
+    if (!available) return;
+    localStorage.removeItem(KEYS.BG_TRANSFORM);
+  }
+
   // ---------- Public API ----------
   return {
     available,
@@ -108,5 +134,8 @@ const Storage = (() => {
     saveBackground,
     loadBackground,
     clearBackground,
+    saveBgTransform,
+    loadBgTransform,
+    clearBgTransform,
   };
 })();
