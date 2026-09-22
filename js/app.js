@@ -261,7 +261,6 @@
   }
 
   function removeBackground() {
-    backgroundImage = null;
     backgroundDataURL = null;
     Storage.clearBackground();
     applyBackgroundToLayer(null);
