@@ -74,7 +74,7 @@ Then open `index.html` in your browser.
 
 ## Option 2: Local server (recommended)
 
-### Using Python
+#### Using Python
 
 `python -m http.server 8000`
 
