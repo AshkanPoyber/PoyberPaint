@@ -116,6 +116,7 @@ PoyberPaint/
 └── README.md
 
 #### File Responsibility
+
 `js/app.js` Drawing tools, canvas logic, event handling
 `js/storage.js` Persistence — canvas, settings, background
 `css/style.css` Theme, cursor, floating text input
@@ -157,6 +158,7 @@ This project follows [Conventional Commits](https://www.conventionalcommits.org/
 ### Types
 
 #### Type When to use
+
 `feat` New feature
 `fix` Bug fix
 `docs` Documentation only
@@ -285,11 +287,10 @@ Check existing issues before creating a new one.
 Do not publicly report security vulnerabilities through GitHub issues.
 
 If you find a security issue, please report it privately via [GitHub profile contact](https://github.com/ashkanpoyber).
-🤝 Code of Conduct
 
-All contributors are expected to be respectful and constructive.
+## 🤝 Code of Conduct
 
-Harassment, discrimination, personal attacks, threats, and sharing someone's private information are not tolerated.
+All contributors are expected to follow the project's [Code of Conduct](./CODE_OF_CONDUCT.md).
 
 Project maintainers may remove content or restrict participation when this code of conduct is violated.
 🎁 Ideas for First Contributions
@@ -314,4 +315,4 @@ Check the [Roadmap](https://./README.md#%EF%B8%8F-roadmap) for planned features.
 
 Thank you for contributing! Happy drawing! 🎨
 
-</div> 
+</div>
