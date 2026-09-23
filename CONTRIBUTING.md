@@ -284,7 +284,7 @@ Check existing issues before creating a new one.
 
 Do not publicly report security vulnerabilities through GitHub issues.
 
-If you find a security issue, please report it privately via GitHub profile contact.
+If you find a security issue, please report it privately via [GitHub profile contact](https://github.com/ashkanpoyber).
 🤝 Code of Conduct
 
 All contributors are expected to be respectful and constructive.
@@ -308,7 +308,7 @@ New to the project? Here are some friendly entry points:
 
     📤 Add "Export as SVG" option
 
-Check the Roadmap for planned features.
+Check the [Roadmap](https://./README.md#%EF%B8%8F-roadmap) for planned features.
 
 <div align="center">
 
