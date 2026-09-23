@@ -78,14 +78,14 @@ Then open `index.html` in your browser.
 
 `python -m http.server 8000`
 
-### Using Node.js
+#### Using Node.js
 
 `npx serve .`
 
 Then visit `http://localhost:8000.`
 Why a local server? Some browsers restrict features (file uploads, LocalStorage) when opening files via `file://.`
 
-# 📂 Project Structure
+## 📂 Project Structure
 
 PoyberPaint/
 
@@ -115,12 +115,12 @@ PoyberPaint/
 
 └── README.md
 
-File Responsibility
+#### File Responsibility
 `js/app.js` Drawing tools, canvas logic, event handling
 `js/storage.js` Persistence — canvas, settings, background
 `css/style.css` Theme, cursor, floating text input
 
-# 🌿 Branch Naming
+## 🌿 Branch Naming
 
 Do not commit directly to `main`. Create a branch based on the type of change:
 Prefix Purpose
