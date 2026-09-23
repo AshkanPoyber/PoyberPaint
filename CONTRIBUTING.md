@@ -149,14 +149,14 @@ chore/update-dependencies
 
 Keep branch names short and descriptive.
 
-# 📝 Commit Conventions
+## 📝 Commit Conventions
 
-This project follows [Conventional Commits}(https://www.conventionalcommits.org/):
+This project follows [Conventional Commits](https://www.conventionalcommits.org/):
 `<type>(<scope>): <description>`
 
-## Types
+### Types
 
-Type When to use
+#### Type When to use
 `feat` New feature
 `fix` Bug fix
 `docs` Documentation only
@@ -166,7 +166,7 @@ Type When to use
 `test` Adding or fixing tests
 `chore` Maintenance, configs, dependencies
 
-## Examples
+### Examples
 
 ```bash
 feat: add text tool with floating input
@@ -179,7 +179,6 @@ perf: optimize flood fill with scanline algorithm
 ## Breaking changes
 
 Add `!` after the type:
-text
 
 ```bash
 feat!: change storage format
@@ -187,7 +186,7 @@ feat!: change storage format
 
 ## 🎨 Code Style
 
-### General
+#### General
 
     2 spaces for indentation
 
@@ -197,7 +196,7 @@ feat!: change storage format
 
     Keep code simple, readable, consistent
 
-### JavaScript
+#### JavaScript
 
     Vanilla JS only — no frameworks or libraries (Tailwind via CDN is the only exception)
 
@@ -211,7 +210,7 @@ feat!: change storage format
 
     Add comments for complex logic (flood fill, DPR, transforms)
 
-### CSS
+#### CSS
 
     Prefer Tailwind utility classes
 
@@ -219,7 +218,7 @@ feat!: change storage format
 
     Follow kebab-case for class names
 
-### HTML
+#### HTML
 
     Use semantic tags (<header>, <main>, <aside>)
 
@@ -231,7 +230,7 @@ feat!: change storage format
 
 Before opening a PR:
 
-    Make sure your branch is up to date with main
+    Make sure your branch is up to date with `main`
 
     Test your changes locally
 
