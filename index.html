@@ -644,6 +644,55 @@
               class="absolute inset-0 w-full h-full object-contain pointer-events-none hidden"
               alt=""
             />
+            <!-- SVG Overlay for resize handles (above image, below canvas) -->
+            <svg
+              id="bgOverlay"
+              class="absolute inset-0 w-full h-full pointer-events-none hidden"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <!-- Bounding box -->
+              <rect
+                id="bgBBox"
+                fill="none"
+                stroke="#6366f1"
+                stroke-width="1.5"
+                stroke-dasharray="5 5"
+                opacity="0.8"
+              />
+              <!-- Corner handles -->
+              <circle
+                id="handleTL"
+                r="7"
+                fill="#6366f1"
+                stroke="#fff"
+                stroke-width="2"
+                class="pointer-events-auto cursor-nwse-resize"
+              />
+              <circle
+                id="handleTR"
+                r="7"
+                fill="#6366f1"
+                stroke="#fff"
+                stroke-width="2"
+                class="pointer-events-auto cursor-nesw-resize"
+              />
+              <circle
+                id="handleBL"
+                r="7"
+                fill="#6366f1"
+                stroke="#fff"
+                stroke-width="2"
+                class="pointer-events-auto cursor-nesw-resize"
+              />
+              <circle
+                id="handleBR"
+                r="7"
+                fill="#6366f1"
+                stroke="#fff"
+                stroke-width="2"
+                class="pointer-events-auto cursor-nwse-resize"
+              />
+            </svg>
             <!-- Canvas (Drawing Layer) -->
             <canvas
               id="board"
@@ -674,7 +723,8 @@
       <p
         class="text-center text-[10px] text-slate-400 dark:text-slate-500 mt-1"
       >
-        Tip: Import any image to trace over or use as a reference.
+        Tip: Import any image to trace over, then use
+        <strong>Move BG</strong> to pan, zoom, or resize from corners.
       </p>
     </main>
 

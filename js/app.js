@@ -24,6 +24,12 @@
   const clearBgBtn = document.getElementById("clearBg");
   const bgLayer = document.getElementById("bgLayer");
   const bgControls = document.getElementById("bgControls");
+  const bgOverlay = document.getElementById("bgOverlay");
+  const bgBBox = document.getElementById("bgBBox");
+  const handleTL = document.getElementById("handleTL");
+  const handleTR = document.getElementById("handleTR");
+  const handleBL = document.getElementById("handleBL");
+  const handleBR = document.getElementById("handleBR");
 
   // ---------- Constants ----------
   const PALETTE = [
@@ -55,6 +61,14 @@
   let bgTransform = { x: 0, y: 0, scale: 1 };
   let isPanningBg = false;
   let bgPanStart = { x: 0, y: 0 };
+  let isResizingBg = false;
+  let resizeStart = {
+    x: 0,
+    y: 0,
+    scale: 1,
+    centerX: 0,
+    centerY: 0,
+  };
 
   const history = [];
   const redoStack = [];
@@ -137,6 +151,11 @@
           "tool-move-bg",
           selectedTool === "move-bg",
         );
+
+        persistSettings();
+
+        // Update overlay visibility
+        updateBgOverlay();
 
         persistSettings();
       }),
@@ -233,6 +252,9 @@
         clearBgBtn.classList.remove("hidden");
         bgControls.classList.remove("hidden");
 
+        // Update overlay
+        setTimeout(updateBgOverlay, 50);
+
         // Push history so background persists across undo/redo
         pushHistory();
       };
@@ -265,6 +287,7 @@
     if (!dataURL) {
       bgLayer.classList.add("hidden");
       bgLayer.removeAttribute("src");
+      bgOverlay.classList.add("hidden");
       return;
     }
     bgLayer.src = dataURL;
@@ -276,6 +299,147 @@
   function applyBgTransform() {
     bgLayer.style.transform = `translate(${bgTransform.x}px, ${bgTransform.y}px) scale(${bgTransform.scale})`;
     Storage.saveBgTransform(bgTransform);
+    updateBgOverlay();
+  }
+
+  // ---------- Resize Overlay ----------
+  function updateBgOverlay() {
+    // Only show when move-bg tool is active and image exists
+    if (selectedTool !== "move-bg" || !backgroundDataURL) {
+      bgOverlay.classList.add("hidden");
+      return;
+    }
+
+    const wrapperRect = canvasWrapper.getBoundingClientRect();
+    const w = wrapperRect.width;
+    const h = wrapperRect.height;
+
+    // ----- Compute actual rendered image bounds (contain-fit) -----
+    // bgLayer fills the wrapper (absolute inset-0 w-full h-full),
+    // so getBoundingClientRect returns the wrapper's size, not the image's.
+    // We must compute contain-fit manually.
+    const imgEl = bgLayer;
+    if (!imgEl.naturalWidth || !imgEl.naturalHeight) {
+      bgOverlay.classList.add("hidden");
+      return;
+    }
+
+    const iw = imgEl.naturalWidth;
+    const ih = imgEl.naturalHeight;
+
+    // Contain-fit within wrapper
+    const fitScale = Math.min(w / iw, h / ih);
+    const baseWidth = iw * fitScale;
+    const baseHeight = ih * fitScale;
+
+    // Apply user transform (scale from center)
+    const finalWidth = baseWidth * bgTransform.scale;
+    const finalHeight = baseHeight * bgTransform.scale;
+
+    // Position: centered in wrapper + user offset
+    const left = (w - finalWidth) / 2 + bgTransform.x;
+    const top = (h - finalHeight) / 2 + bgTransform.y;
+
+    // Set viewBox to match wrapper CSS pixels
+    bgOverlay.setAttribute("viewBox", `0 0 ${w} ${h}`);
+
+    // Position bounding box
+    bgBBox.setAttribute("x", left);
+    bgBBox.setAttribute("y", top);
+    bgBBox.setAttribute("width", finalWidth);
+    bgBBox.setAttribute("height", finalHeight);
+
+    // Position corner handles
+    const corners = [
+      [handleTL, left, top],
+      [handleTR, left + finalWidth, top],
+      [handleBL, left, top + finalHeight],
+      [handleBR, left + finalWidth, top + finalHeight],
+    ];
+    corners.forEach(([el, cx, cy]) => {
+      el.setAttribute("cx", cx);
+      el.setAttribute("cy", cy);
+    });
+
+    bgOverlay.classList.remove("hidden");
+  }
+
+  // ---------- Resize Handles Logic ----------
+  function bindResizeHandles() {
+    const handles = [handleTL, handleTR, handleBL, handleBR];
+
+    handles.forEach((handle) => {
+      handle.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!backgroundDataURL) return;
+
+        isResizingBg = true;
+        handle.setPointerCapture(e.pointerId);
+
+        // Compute center of the *rendered* image in client coords
+        const wrapperRect = canvasWrapper.getBoundingClientRect();
+        const w = wrapperRect.width;
+        const h = wrapperRect.height;
+
+        const iw = bgLayer.naturalWidth;
+        const ih = bgLayer.naturalHeight;
+        const fitScale = Math.min(w / iw, h / ih);
+        const baseWidth = iw * fitScale;
+        const baseHeight = ih * fitScale;
+        const finalWidth = baseWidth * bgTransform.scale;
+        const finalHeight = baseHeight * bgTransform.scale;
+
+        // Center of image in client coords
+        const imgCenterX =
+          wrapperRect.left +
+          (w - finalWidth) / 2 +
+          bgTransform.x +
+          finalWidth / 2;
+        const imgCenterY =
+          wrapperRect.top +
+          (h - finalHeight) / 2 +
+          bgTransform.y +
+          finalHeight / 2;
+
+        resizeStart.centerX = imgCenterX;
+        resizeStart.centerY = imgCenterY;
+
+        // Distance from center to pointer (baseline)
+        const dx = e.clientX - imgCenterX;
+        const dy = e.clientY - imgCenterY;
+        resizeStart.distance = Math.max(1, Math.hypot(dx, dy));
+
+        // Baseline scale
+        resizeStart.scale = bgTransform.scale;
+      });
+
+      handle.addEventListener("pointermove", (e) => {
+        if (!isResizingBg) return;
+        e.preventDefault();
+
+        const dx = e.clientX - resizeStart.centerX;
+        const dy = e.clientY - resizeStart.centerY;
+        const newDistance = Math.max(1, Math.hypot(dx, dy));
+
+        const ratio = newDistance / resizeStart.distance;
+        const newScale = Math.max(0.2, Math.min(6, resizeStart.scale * ratio));
+
+        bgTransform.scale = newScale;
+        applyBgTransform();
+      });
+
+      const endResize = (e) => {
+        if (!isResizingBg) return;
+        isResizingBg = false;
+        try {
+          handle.releasePointerCapture(e.pointerId);
+        } catch {}
+      };
+
+      handle.addEventListener("pointerup", endResize);
+      handle.addEventListener("pointercancel", endResize);
+    });
   }
 
   function resetBgTransform() {
@@ -284,7 +448,7 @@
   }
 
   function zoomBg(factor) {
-    const newScale = Math.min(0.3, Math.min(5, bgTransform.scale * factor));
+    const newScale = Math.max(0.2, Math.min(6, bgTransform.scale * factor));
     bgTransform.scale = newScale;
     applyBgTransform();
   }
@@ -307,6 +471,7 @@
     applyBackgroundToLayer(null);
     clearBgBtn.classList.add("hidden");
     bgControls.classList.add("hidden");
+    bgOverlay.classList.add("hidden");
   }
 
   // ---------- History ----------
@@ -715,7 +880,7 @@
     });
 
     // Wheel zoom on the background (only when move-bg is active)
-    canvas.addEventListener(
+    canvasWrapper.addEventListener(
       "wheel",
       (e) => {
         if (selectedTool !== "move-bg" || !backgroundDataURL) return;
@@ -903,6 +1068,7 @@
     bindDrawing();
     bindActions();
     bindKeyboard();
+    bindResizeHandles();
 
     setupCanvas();
 
@@ -914,12 +1080,19 @@
       clearBgBtn.classList.remove("hidden");
       bgControls.classList.remove("hidden");
       loadBgTransform();
+      updateBgOverlay();
     }
 
     await loadSavedCanvas();
     pushHistory();
 
-    window.addEventListener("resize", debounce(setupCanvas, 200));
+    window.addEventListener(
+      "resize",
+      debounce(() => {
+        setupCanvas();
+        updateBgOverlay();
+      }, 200),
+    );
   }
 
   window.addEventListener("load", init);

@@ -142,3 +142,21 @@ body.tool-move-bg canvas:active {
   user-select: none;
   -webkit-user-drag: none;
 }
+
+/* ===== Resize handles ===== */
+#bgOverlay {
+  /* Overlay is above the image but below canvas */
+  z-index: 1;
+}
+
+#bgOverlay .handle {
+  transition:
+    r 0.15s ease,
+    fill 0.15s ease;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+}
+
+#bgOverlay .handle:hover {
+  fill: #4f46e5;
+  r: 8;
+}
