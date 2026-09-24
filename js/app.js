@@ -284,7 +284,7 @@
   }
 
   function zoomBg(factor) {
-    const newScale = Math.max(0.3, Math.min(5, bgTransform.scale * factor));
+    const newScale = Math.min(0.3, Math.min(5, bgTransform.scale * factor));
     bgTransform.scale = newScale;
     applyBgTransform();
   }
