@@ -18,6 +18,7 @@ Draw. Sketch. Create.
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-38bdf8?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge)](./LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/ashkanpoyber/PoyberPaint?style=for-the-badge&color=facc15&logo=github)](https://github.com/ashkanpoyber/PoyberPaint/stargazers)
+[![Latest Release](https://img.shields.io/github/v/release/ashkanpoyber/PoyberPaint?style=for-the-badge&color=6366f1&logo=github)](https://github.com/ashkanpoyber/PoyberPaint/releases)
 
 </div>
 
