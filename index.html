@@ -650,8 +650,15 @@
               class="absolute inset-0 w-full h-full pointer-events-none hidden"
               xmlns="http://www.w3.org/2000/svg"
             >
+              <!-- Line from top edge to rotate handle -->
+              <line
+                id="rotateLine"
+                stroke="#6366f1"
+                stroke-width="1.5"
+                opacity="0.7"
+              />
               <!-- Bounding box -->
-              <rect
+              <polygon
                 id="bgBBox"
                 fill="none"
                 stroke="#6366f1"
@@ -659,7 +666,16 @@
                 stroke-dasharray="5 5"
                 opacity="0.8"
               />
-              <!-- Corner handles -->
+              <!-- Rotate handle (above top edge) -->
+              <circle
+                id="rotateHandle"
+                r="8"
+                fill="#8b5cf6"
+                stroke="#fff"
+                stroke-width="2"
+                class="pointer-events-auto"
+              />
+              <!-- Corner handles (resize) -->
               <circle
                 id="handleTL"
                 r="7"
@@ -724,7 +740,8 @@
         class="text-center text-[10px] text-slate-400 dark:text-slate-500 mt-1"
       >
         Tip: Import any image to trace over, then use
-        <strong>Move BG</strong> to pan, zoom, or resize from corners.
+        <strong>Move BG</strong> to pan, zoom, resize from corners, or rotate
+        from the top handle.
       </p>
     </main>
 

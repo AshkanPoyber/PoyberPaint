@@ -30,6 +30,8 @@
   const handleTR = document.getElementById("handleTR");
   const handleBL = document.getElementById("handleBL");
   const handleBR = document.getElementById("handleBR");
+  const rotateHandle = document.getElementById("rotateHandle");
+  const rotateLine = document.getElementById("rotateLine");
 
   // ---------- Constants ----------
   const PALETTE = [
@@ -58,10 +60,12 @@
   let saveIndicatorTimer = null;
   let textInputEl = null;
   let backgroundDataURL = null;
-  let bgTransform = { x: 0, y: 0, scale: 1 };
+  let bgTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
   let isPanningBg = false;
   let bgPanStart = { x: 0, y: 0 };
   let isResizingBg = false;
+  let isRotatingBg = false;
+  let rotateStart = { angle: 0, rotation: 0, centerX: 0, centerY: 0 };
   let resizeStart = {
     x: 0,
     y: 0,
@@ -297,14 +301,13 @@
 
   // ---------- Background Transform ----------
   function applyBgTransform() {
-    bgLayer.style.transform = `translate(${bgTransform.x}px, ${bgTransform.y}px) scale(${bgTransform.scale})`;
+    bgLayer.style.transform = `translate(${bgTransform.x}px, ${bgTransform.y}px) scale(${bgTransform.scale}) rotate(${bgTransform.rotation}deg)`;
     Storage.saveBgTransform(bgTransform);
     updateBgOverlay();
   }
 
-  // ---------- Resize Overlay ----------
+  // ---------- Resize / Rotate Overlay ----------
   function updateBgOverlay() {
-    // Only show when move-bg tool is active and image exists
     if (selectedTool !== "move-bg" || !backgroundDataURL) {
       bgOverlay.classList.add("hidden");
       return;
@@ -314,60 +317,108 @@
     const w = wrapperRect.width;
     const h = wrapperRect.height;
 
-    // ----- Compute actual rendered image bounds (contain-fit) -----
-    // bgLayer fills the wrapper (absolute inset-0 w-full h-full),
-    // so getBoundingClientRect returns the wrapper's size, not the image's.
-    // We must compute contain-fit manually.
-    const imgEl = bgLayer;
-    if (!imgEl.naturalWidth || !imgEl.naturalHeight) {
+    if (!bgLayer.naturalWidth || !bgLayer.naturalHeight) {
       bgOverlay.classList.add("hidden");
       return;
     }
 
-    const iw = imgEl.naturalWidth;
-    const ih = imgEl.naturalHeight;
+    const iw = bgLayer.naturalWidth;
+    const ih = bgLayer.naturalHeight;
 
-    // Contain-fit within wrapper
+    // Contain-fit base size
     const fitScale = Math.min(w / iw, h / ih);
     const baseWidth = iw * fitScale;
     const baseHeight = ih * fitScale;
 
-    // Apply user transform (scale from center)
+    // Apply user scale
     const finalWidth = baseWidth * bgTransform.scale;
     const finalHeight = baseHeight * bgTransform.scale;
 
-    // Position: centered in wrapper + user offset
-    const left = (w - finalWidth) / 2 + bgTransform.x;
-    const top = (h - finalHeight) / 2 + bgTransform.y;
+    // Center of the image (before rotation)
+    const cx = w / 2 + bgTransform.x;
+    const cy = h / 2 + bgTransform.y;
 
-    // Set viewBox to match wrapper CSS pixels
+    // Rotation in radians
+    const rad = (bgTransform.rotation * Math.PI) / 180;
+
+    // Half dimensions
+    const hw = finalWidth / 2;
+    const hh = finalHeight / 2;
+
+    // Helper: rotate a point around (cx, cy)
+    function rot(px, py) {
+      const dx = px - cx;
+      const dy = py - cy;
+      return {
+        x: cx + dx * Math.cos(rad) - dy * Math.sin(rad),
+        y: cy + dx * Math.sin(rad) + dy * Math.cos(rad),
+      };
+    }
+
+    // Original (unrotated) corners relative to center
+    const corners = {
+      tl: rot(cx - hw, cy - hh),
+      tr: rot(cx + hw, cy - hh),
+      bl: rot(cx - hw, cy + hh),
+      br: rot(cx + hw, cy + hh),
+    };
+
+    // Draw rotated bounding box as a polygon
+    const points = [corners.tl, corners.tr, corners.br, corners.bl]
+      .map((p) => `${p.x},${p.y}`)
+      .join(" ");
+
+    // Replace <rect> with <polygon> if not already
+    // (bgBBox was a rect; now it's a polygon)
+    bgBBox.setAttribute("points", points);
+
     bgOverlay.setAttribute("viewBox", `0 0 ${w} ${h}`);
 
-    // Position bounding box
-    bgBBox.setAttribute("x", left);
-    bgBBox.setAttribute("y", top);
-    bgBBox.setAttribute("width", finalWidth);
-    bgBBox.setAttribute("height", finalHeight);
-
     // Position corner handles
-    const corners = [
-      [handleTL, left, top],
-      [handleTR, left + finalWidth, top],
-      [handleBL, left, top + finalHeight],
-      [handleBR, left + finalWidth, top + finalHeight],
-    ];
-    corners.forEach(([el, cx, cy]) => {
-      el.setAttribute("cx", cx);
-      el.setAttribute("cy", cy);
-    });
+    handleTL.setAttribute("cx", corners.tl.x);
+    handleTL.setAttribute("cy", corners.tl.y);
+    handleTR.setAttribute("cx", corners.tr.x);
+    handleTR.setAttribute("cy", corners.tr.y);
+    handleBL.setAttribute("cx", corners.bl.x);
+    handleBL.setAttribute("cy", corners.bl.y);
+    handleBR.setAttribute("cx", corners.br.x);
+    handleBR.setAttribute("cy", corners.br.y);
+
+    // Rotate handle position: above the top edge midpoint, perpendicular
+    const topMidX = (corners.tl.x + corners.tr.x) / 2;
+    const topMidY = (corners.tl.y + corners.tr.y) / 2;
+
+    // Perpendicular direction (from top edge, outward)
+    // Top edge direction vector:
+    const edgeDx = corners.tr.x - corners.tl.x;
+    const edgeDy = corners.tr.y - corners.tl.y;
+    const edgeLen = Math.hypot(edgeDx, edgeDy) || 1;
+
+    // Perpendicular (rotate edge vector -90°)
+    const perpX = edgeDy / edgeLen;
+    const perpY = -edgeDx / edgeLen;
+
+    const handleOffset = 35;
+    const rhX = topMidX + perpX * handleOffset;
+    const rhY = topMidY + perpY * handleOffset;
+
+    rotateHandle.setAttribute("cx", rhX);
+    rotateHandle.setAttribute("cy", rhY);
+
+    // Line from top midpoint to rotate handle
+    rotateLine.setAttribute("x1", topMidX);
+    rotateLine.setAttribute("y1", topMidY);
+    rotateLine.setAttribute("x2", rhX);
+    rotateLine.setAttribute("y2", rhY);
 
     bgOverlay.classList.remove("hidden");
   }
 
-  // ---------- Resize Handles Logic ----------
+  // ---------- Resize / Rotate Handles Logic ----------
   function bindResizeHandles() {
     const handles = [handleTL, handleTR, handleBL, handleBR];
 
+    // ---- Resize handles ----
     handles.forEach((handle) => {
       handle.addEventListener("pointerdown", (e) => {
         e.preventDefault();
@@ -377,40 +428,13 @@
         isResizingBg = true;
         handle.setPointerCapture(e.pointerId);
 
-        // Compute center of the *rendered* image in client coords
-        const wrapperRect = canvasWrapper.getBoundingClientRect();
-        const w = wrapperRect.width;
-        const h = wrapperRect.height;
+        const { cx, cy } = getImageCenterClient();
+        resizeStart.centerX = cx;
+        resizeStart.centerY = cy;
 
-        const iw = bgLayer.naturalWidth;
-        const ih = bgLayer.naturalHeight;
-        const fitScale = Math.min(w / iw, h / ih);
-        const baseWidth = iw * fitScale;
-        const baseHeight = ih * fitScale;
-        const finalWidth = baseWidth * bgTransform.scale;
-        const finalHeight = baseHeight * bgTransform.scale;
-
-        // Center of image in client coords
-        const imgCenterX =
-          wrapperRect.left +
-          (w - finalWidth) / 2 +
-          bgTransform.x +
-          finalWidth / 2;
-        const imgCenterY =
-          wrapperRect.top +
-          (h - finalHeight) / 2 +
-          bgTransform.y +
-          finalHeight / 2;
-
-        resizeStart.centerX = imgCenterX;
-        resizeStart.centerY = imgCenterY;
-
-        // Distance from center to pointer (baseline)
-        const dx = e.clientX - imgCenterX;
-        const dy = e.clientY - imgCenterY;
+        const dx = e.clientX - cx;
+        const dy = e.clientY - cy;
         resizeStart.distance = Math.max(1, Math.hypot(dx, dy));
-
-        // Baseline scale
         resizeStart.scale = bgTransform.scale;
       });
 
@@ -440,10 +464,75 @@
       handle.addEventListener("pointerup", endResize);
       handle.addEventListener("pointercancel", endResize);
     });
+
+    // ---- Rotate handle ----
+    rotateHandle.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!backgroundDataURL) return;
+
+      isRotatingBg = true;
+      rotateHandle.setPointerCapture(e.pointerId);
+
+      const { cx, cy } = getImageCenterClient();
+      rotateStart.centerX = cx;
+      rotateStart.centerY = cy;
+      rotateStart.angle = Math.atan2(e.clientY - cy, e.clientX - cx);
+      rotateStart.rotation = bgTransform.rotation;
+    });
+
+    rotateHandle.addEventListener("pointermove", (e) => {
+      if (!isRotatingBg) return;
+      e.preventDefault();
+
+      const angle = Math.atan2(
+        e.clientY - rotateStart.centerY,
+        e.clientX - rotateStart.centerX,
+      );
+
+      // Delta angle (radians → degrees)
+      const deltaDeg = ((angle - rotateStart.angle) * 180) / Math.PI;
+      let newRotation = rotateStart.rotation + deltaDeg;
+
+      // Optional: snap to 15° increments with Shift
+      if (e.shiftKey) {
+        newRotation = Math.round(newRotation / 15) * 15;
+      }
+
+      // Normalize to [-180, 180]
+      if (newRotation > 180) newRotation -= 360;
+      if (newRotation < -180) newRotation += 360;
+
+      bgTransform.rotation = newRotation;
+      applyBgTransform();
+    });
+
+    const endRotate = (e) => {
+      if (!isRotatingBg) return;
+      isRotatingBg = false;
+      try {
+        rotateHandle.releasePointerCapture(e.pointerId);
+      } catch {}
+    };
+
+    rotateHandle.addEventListener("pointerup", endRotate);
+    rotateHandle.addEventListener("pointercancel", endRotate);
+  }
+
+  // Helper: image center in client coordinates
+  function getImageCenterClient() {
+    const wrapperRect = canvasWrapper.getBoundingClientRect();
+    const w = wrapperRect.width;
+    const h = wrapperRect.height;
+
+    const cx = wrapperRect.left + w / 2 + bgTransform.x;
+    const cy = wrapperRect.top + h / 2 + bgTransform.y;
+
+    return { cx, cy };
   }
 
   function resetBgTransform() {
-    bgTransform = { x: 0, y: 0, scale: 1 };
+    bgTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
     applyBgTransform();
   }
 
@@ -456,9 +545,14 @@
   function loadBgTransform() {
     const saved = Storage.loadBgTransform();
     if (saved && typeof saved.x === "number") {
-      bgTransform = saved;
+      bgTransform = {
+        x: saved.x || 0,
+        y: saved.y || 0,
+        scale: saved.scale || 1,
+        rotation: saved.rotation || 0,
+      };
     } else {
-      bgTransform = { x: 0, y: 0, scale: 1 };
+      bgTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
     }
     applyBgTransform();
   }
@@ -834,6 +928,14 @@
         isPanningBg = false;
         return;
       }
+      if (isRotatingBg) {
+        isRotatingBg = false;
+        return;
+      }
+      if (isResizingBg) {
+        isResizingBg = false;
+        return;
+      }
       if (!isDrawing) return;
       isDrawing = false;
       pushHistory();
@@ -891,6 +993,9 @@
     );
 
     document.getElementById("save").addEventListener("click", () => {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = canvas.width / rect.width;
+
       const exportCanvas = document.createElement("canvas");
       exportCanvas.width = canvas.width;
       exportCanvas.height = canvas.height;
@@ -900,30 +1005,30 @@
       exCtx.fillStyle = "#ffffff";
       exCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
 
-      // 2) Draw the background image (if any) with transform
+      // 2) Draw the background image with transform
       if (backgroundDataURL) {
         const img = new Image();
         img.onload = () => {
-          const dpr = exportCanvas.width / canvas.getBoundingClientRect().width;
+          const iw = img.naturalWidth;
+          const ih = img.naturalHeight;
 
-          // Cover-fit base
-          const baseScale = Math.max(
-            exportCanvas.width / img.width,
-            exportCanvas.height / img.height,
-          );
+          // Contain-fit base scale (in CSS pixels, then × DPR)
+          const fitScale = Math.min(rect.width / iw, rect.height / ih) * dpr;
 
-          // Combine with user transform
-          const totalScale = baseScale * bgTransform.scale;
-          const dw = img.width * totalScale;
-          const dh = img.height * totalScale;
+          const dw = iw * fitScale * bgTransform.scale;
+          const dh = ih * fitScale * bgTransform.scale;
 
-          // Center + user offset
-          const dx = (exportCanvas.width - dw) / 2 + bgTransform.x * dpr;
-          const dy = (exportCanvas.height - dh) / 2 + bgTransform.y * dpr;
+          // Center of export canvas + user offset (in DPR px)
+          const cx = exportCanvas.width / 2 + bgTransform.x * dpr;
+          const cy = exportCanvas.height / 2 + bgTransform.y * dpr;
 
-          exCtx.drawImage(img, dx, dy, dw, dh);
+          exCtx.save();
+          exCtx.translate(cx, cy);
+          exCtx.rotate((bgTransform.rotation * Math.PI) / 180);
+          exCtx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+          exCtx.restore();
 
-          // 3) Draw the drawing on top
+          // 3) Drawing on top
           exCtx.drawImage(canvas, 0, 0);
 
           // 4) Download
