@@ -137,7 +137,7 @@ Then open `index.html` in your browser — no build step needed.
 
 `npx serve .`
 
- or
+or
 
 `python -m http.server 8000`
 
@@ -189,11 +189,11 @@ PoyberPaint/
 
 ☑LocalStorage persistence
 
+☑Import image upload
+
 □Layer system
 
 □Export to SVG
-
-□Background image upload
 
 ## 🤝 Contributing
 

@@ -402,11 +402,11 @@
                 stroke-linecap="round"
                 stroke-linejoin="round"
               >
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <circle cx="9" cy="9" r="2" />
-                <path d="M21 15l-5-5L5 21" />
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <path d="M17 8l-5-5-5 5" />
+                <path d="M12 3v12" />
               </svg>
-              <span>Background Image</span>
+              <span>Import Image</span>
               <input
                 type="file"
                 id="bgUpload"
@@ -430,7 +430,7 @@
               >
                 <path d="M18 6L6 18M6 6l12 12" />
               </svg>
-              Remove Background
+              Remove Image
             </button>
 
             <!-- Background controls -->
@@ -674,8 +674,7 @@
       <p
         class="text-center text-[10px] text-slate-400 dark:text-slate-500 mt-1"
       >
-        Tip: Load a background image to trace over, or keep it clean to draw
-        freely.
+        Tip: Import any image to trace over or use as a reference.
       </p>
     </main>
 

@@ -695,7 +695,7 @@
 
     clearBgBtn.addEventListener("click", () => {
       if (!backgroundDataURL) return;
-      if (!confirm("Remove background image?")) return;
+      if (!confirm("Remove the imported image?")) return;
       removeBackground();
     });
 
