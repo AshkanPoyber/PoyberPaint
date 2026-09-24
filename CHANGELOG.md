@@ -16,6 +16,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.0] - 2026-09-24
+
+### Added
+
+- 🖼️ **Image import** — load any image as a reference layer (auto-compressed)
+- 🖐️ **Pan** — drag the background image when Move BG tool is active
+- 🔍 **Zoom** — mouse wheel + zoom in/out buttons
+- 📐 **Resize handles** — drag any corner to scale the image
+- 🔄 **Rotate handle** — drag the top handle to rotate; hold Shift to snap to 15°
+- 🎯 **Reset** button for background transform
+- 💾 Background transform persistence (pan, zoom, scale, rotation)
+
+### Changed
+
+- Background image now renders in a separate DOM layer (behind canvas)
+- Canvas is now transparent — drawing layer only
+- Background image uses `object-contain` for full visibility
+- Renamed "Background Image" to "Import Image" for clarity
+- Renamed "Remove Background" to "Remove Image"
+
+### Fixed
+
+- Overlay bounds now correctly match contain-fit + rotation
+- Removed `pointer-events: none` on canvas that blocked pan
+- `zoomBg()` Math.min bug that capped scale at 0.3
+- Export now applies rotation and correct contain-fit
+- Eraser uses `destination-out` composite for true transparency
+
 ## [1.2.0] - 2026-09-23
 
 ### Added

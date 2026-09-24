@@ -33,7 +33,7 @@ Draw. Sketch. Create.
 ### 🎨 Drawing Tools
 
 - 🖌️ **Brush** — smooth freehand drawing
-- 🧽 **Eraser** — clean up your canvas
+- 🧽 **Eraser** — true transparency with destination-out
 - ✍️ **Text** — click, type, and place text anywhere
 - 📏 **Line** — draw straight lines
 - ➡️ **Arrow** — with dynamic arrowhead geometry
@@ -56,6 +56,20 @@ Draw. Sketch. Create.
 </td>
 </tr>
 </table>
+
+---
+
+### 🖼️ Image Layer
+
+Import any image as a reference layer — perfect for tracing, mood boards, or drawing over photos.
+
+- 📤 **Import** — load JPG, PNG, WebP, GIF (auto-compressed)
+- 🖐️ **Pan** — drag to reposition
+- 🔍 **Zoom** — mouse wheel or buttons
+- 📐 **Resize** — drag any corner handle
+- 🔄 **Rotate** — drag the top handle (Shift to snap)
+- 🎯 **Reset** — restore original position
+- 💾 **Persisted** — transform survives reloads
 
 ---
 
@@ -105,6 +119,9 @@ Building PoyberPaint helped me practice:
 - ⏱️ **Debouncing** — smooth canvas resize handling
 - 🧩 **Modular architecture** — clean separation of concerns in vanilla JS
 - 🌗 **Theming** — dark/light toggle with FOUC prevention
+- 🖼️ **Image manipulation** — pan, zoom, resize, and rotate with SVG overlay handles
+- 📐 **Transform math** — combining translate, scale, and rotate with correct bounds
+- 🎯 **Hit detection** — SVG pointer events on rotated bounding boxes
 
 ---
 
@@ -171,29 +188,19 @@ PoyberPaint/
 
 ## 🗺️ Roadmap
 
-☑Brush, eraser, shapes
-
-☑Line & arrow tools
-
-☑Text tool
-
-☑Flood fill (bucket)
-
-☑Undo / redo
-
-☑Save as PNG
-
-☑Responsive dark UI
-
-☑Light / dark theme toggle
-
-☑LocalStorage persistence
-
-☑Import image upload
-
-□Layer system
-
-□Export to SVG
+- [x] Brush, eraser, shapes
+- [x] Line & arrow tools
+- [x] Text tool
+- [x] Flood fill (bucket)
+- [x] Undo / redo
+- [x] Save as PNG
+- [x] Responsive dark UI
+- [x] Light / dark theme toggle
+- [x] LocalStorage persistence
+- [x] Image import with pan, zoom, resize, rotate
+- [ ] Layer system
+- [ ] Export to SVG
+- [ ] Background removal
 
 ## 🤝 Contributing
 
