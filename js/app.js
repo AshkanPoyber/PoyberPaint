@@ -244,6 +244,10 @@
   }
 
   function startRenameLayer(layer, nameEl) {
+    // Prevent re-entry
+    if (nameEl.dataset.renaming === "1") return;
+    nameEl.dataset.renaming = "1";
+
     const input = document.createElement("input");
     input.type = "text";
     input.className = "layer-name-input";
@@ -254,23 +258,35 @@
     input.focus();
     input.select();
 
-    const commit = () => {
-      const newName = input.value.trim() || layer.name;
-      layer.name = newName;
-      persistSettings();
+    let committed = false;
+
+    const commit = (save) => {
+      if (committed) return;
+      committed = true;
+
+      if (save) {
+        const newName = input.value.trim() || layer.name;
+        layer.name = newName;
+        persistSettings();
+      }
       renderLayerList();
     };
 
-    input.addEventListener("blur", commit);
     input.addEventListener("keydown", (e) => {
+      e.stopPropagation(); // Prevent global shortcuts
       if (e.key === "Enter") {
         e.preventDefault();
-        input.blur();
+        commit(true);
       } else if (e.key === "Escape") {
-        input.value = layer.name;
-        input.blur();
+        e.preventDefault();
+        commit(false);
       }
     });
+
+    // Use setTimeout so initial focus doesn't trigger blur
+    setTimeout(() => {
+      input.addEventListener("blur", () => commit(true), { once: true });
+    }, 50);
   }
 
   function removeLayer(id) {
@@ -1429,10 +1445,32 @@
   // ---------- Persist ----------
   function persistCanvas() {
     if (!Storage.available) return;
-    const layer = getActiveLayer();
-    if (!layer) return;
-    Storage.saveCanvas(layer.canvas.toDataURL("image/png"));
-    showSaved();
+    // Save ALL layers' pixel data + metadata
+    const layerData = layers.map((l) => ({
+      id: l.id,
+      name: l.name,
+      visible: l.visible,
+      opacity: l.opacity,
+      dataURL: l.canvas.toDataURL("image/png"),
+    }));
+
+    try {
+      localStorage.setItem(
+        "poyberpaint:layers",
+        JSON.stringify({
+          activeLayerId,
+          layers: layerData,
+        }),
+      );
+      // Also keep the old single-canvas key for backwards compat
+      const active = getActiveLayer();
+      if (active) {
+        Storage.saveCanvas(active.canvas.toDataURL("image/png"));
+      }
+      showSaved();
+    } catch (e) {
+      console.warn("Failed to save layers:", e);
+    }
   }
 
   function persistSettings() {
@@ -1481,26 +1519,72 @@
     };
   }
 
-  function loadSavedCanvas() {
-    const dataURL = Storage.loadCanvas();
-    if (!dataURL) return Promise.resolve(false);
+  async function loadSavedCanvas() {
+    const raw = Storage.available
+      ? localStorage.getItem("poyberpaint:layers")
+      : null;
 
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const layer = getActiveLayer();
-        if (!layer) return resolve(false);
-        const { canvas, ctx } = layer;
-        const rect = canvas.getBoundingClientRect();
-        ctx.save();
-        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-        ctx.drawImage(img, 0, 0, rect.width, rect.height);
-        ctx.restore();
-        resolve(true);
-      };
-      img.onerror = () => resolve(false);
-      img.src = dataURL;
+    if (!raw) return false;
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return false;
+    }
+
+    if (!parsed?.layers?.length) return false;
+
+    // Clear existing layers (created in init)
+    layers.forEach((l) => l.canvas.remove());
+    layers = [];
+    nextLayerId = 1;
+
+    // Recreate all layers from saved data
+    const loadPromises = parsed.layers.map((meta, idx) => {
+      return new Promise((resolve) => {
+        const layer = createLayer(meta.name);
+
+        // Restore metadata
+        layer.visible = meta.visible !== false;
+        layer.opacity = typeof meta.opacity === "number" ? meta.opacity : 1;
+
+        if (!layer.visible) layer.canvas.style.display = "none";
+        layer.canvas.style.opacity = layer.opacity;
+
+        if (!meta.dataURL) return resolve();
+
+        const img = new Image();
+        img.onload = () => {
+          const { canvas, ctx } = layer;
+          // Ensure canvas has correct dimensions
+          const stackRect = layerStack.getBoundingClientRect();
+          canvas.width = Math.floor(stackRect.width * DPR);
+          canvas.height = Math.floor(stackRect.height * DPR);
+          ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+
+          ctx.drawImage(img, 0, 0, stackRect.width, stackRect.height);
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = meta.dataURL;
+      });
     });
+
+    await Promise.all(loadPromises);
+
+    // Set active layer
+    const activeId = parsed.activeLayerId;
+    if (activeId && layers.find((l) => l.id === activeId)) {
+      setActiveLayer(activeId);
+    } else if (layers.length) {
+      setActiveLayer(layers[0].id);
+    }
+
+    renderLayerList();
+    return true;
   }
 
   // ---------- Init ----------
@@ -1514,25 +1598,28 @@
     bindKeyboard();
     bindResizeHandles();
 
-    // Create first layer
+    // Create a default layer (will be replaced if saved data exists)
     createLayer("Layer 1");
     setActiveLayer(layers[0].id);
-    // Apply saved layer metadata (names, visible, opacity)
-    const meta = window.__savedLayerMeta;
-    if (meta) {
-      if (meta.names && meta.names[0]) layers[0].name = meta.names[0];
-      if (meta.visible) layers[0].visible = meta.visible[0];
-      if (meta.opacity) {
-        layers[0].opacity = meta.opacity[0];
-        layers[0].canvas.style.opacity = layers[0].opacity;
-      }
-      if (!layers[0].visible) layers[0].canvas.style.display = "none";
-      delete window.__savedLayerMeta;
-    }
-    renderLayerList();
 
-    // Size it now that it's in the DOM
     setupCanvas(false);
+
+    // Load saved layers (this will replace the default one if data exists)
+    const loaded = await loadSavedCanvas();
+
+    // If nothing loaded, just push the current state
+    if (!loaded) {
+      pushHistory();
+    } else {
+      // Push history per-layer
+      layers.forEach((layer) => {
+        layer.history.push(
+          layer.ctx.getImageData(0, 0, layer.canvas.width, layer.canvas.height),
+        );
+      });
+      updateHistoryButtons();
+      showSaved();
+    }
 
     // Load background image
     const bgData = Storage.loadBackground();
@@ -1545,8 +1632,7 @@
       updateBgOverlay();
     }
 
-    await loadSavedCanvas();
-    pushHistory();
+    renderLayerList();
 
     window.addEventListener(
       "resize",
