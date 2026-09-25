@@ -24,6 +24,8 @@
   const clearBgBtn = document.getElementById("clearBg");
   const bgLayer = document.getElementById("bgLayer");
   const bgControls = document.getElementById("bgControls");
+  const canvasSizeBtn = document.getElementById("canvasSizeBtn");
+  const canvasSizeLabel = document.getElementById("canvasSizeLabel");
   const bgFlipHBtn = document.getElementById("bgFlipH");
   const bgFlipVBtn = document.getElementById("bgFlipV");
   const bgOverlay = document.getElementById("bgOverlay");
@@ -50,6 +52,16 @@
   ];
   const MAX_HISTORY = 30;
   const DPR = window.devicePixelRatio || 1;
+
+  // Canvas size presets: value is width/height ratio, null = free
+  const CANVAS_PRESETS = [
+    { id: "free", label: "Free", ratio: null },
+    { id: "square", label: "Square 1:1", ratio: 1 },
+    { id: "landscape", label: "Landscape 16:9", ratio: 16 / 9 },
+    { id: "portrait", label: "Portrait 9:16", ratio: 9 / 16 },
+    { id: "classic", label: "Classic 4:3", ratio: 4 / 3 },
+    { id: "wide", label: "Wide 21:9", ratio: 21 / 9 },
+  ];
 
   // Keyboard shortcut → tool mapping
   const TOOL_KEYS = {
@@ -88,6 +100,7 @@
     centerX: 0,
     centerY: 0,
   };
+  let currentAspectPreset = "free";
 
   const history = [];
   const redoStack = [];
@@ -232,6 +245,136 @@
         rect.height,
       );
     }
+  }
+
+  // ---------- Canvas Size ----------
+  function applyAspectPreset(presetId) {
+    const preset = CANVAS_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+
+    currentAspectPreset = presetId;
+
+    const wrapperRect = canvasWrapper.getBoundingClientRect();
+    const w = wrapperRect.width;
+    const maxH = Math.min(window.innerHeight * 0.72, 800);
+
+    if (preset.ratio === null) {
+      // Free — fill wrapper
+      canvas.removeAttribute("data-aspect");
+      canvas.style.aspectRatio = "";
+      canvas.style.width = "100%";
+      canvas.style.height = "";
+      canvas.classList.remove("max-h-[72vh]");
+      canvas.classList.add("h-[60vh]", "sm:h-[72vh]");
+    } else {
+      // Calculate best fit within wrapper
+      let targetW = w;
+      let targetH = targetW / preset.ratio;
+
+      if (targetH > maxH) {
+        targetH = maxH;
+        targetW = targetH * preset.ratio;
+      }
+
+      canvas.setAttribute("data-aspect", presetId);
+      canvas.classList.remove("h-[60vh]", "sm:h-[72vh]");
+      canvas.style.aspectRatio = `${preset.ratio}`;
+      canvas.style.width = `${targetW}px`;
+      canvas.style.height = `${targetH}px`;
+    }
+
+    // Update label
+    if (canvasSizeLabel) {
+      canvasSizeLabel.textContent = preset.label.split(" ")[0];
+    }
+
+    // Preserve drawing via setupCanvas (it already does)
+    setupCanvas();
+
+    // Re-fit background overlay
+    updateBgOverlay();
+
+    // Persist
+    persistSettings();
+  }
+
+  function buildCanvasSizeMenu() {
+    if (!canvasSizeBtn) return;
+
+    // Create dropdown
+    const menu = document.createElement("div");
+    menu.id = "canvasSizeMenu";
+    menu.className =
+      "absolute top-full left-0 mt-1 w-40 py-1 rounded-xl bg-white dark:bg-ink-800 border border-black/10 dark:border-white/10 shadow-xl opacity-0 invisible transition-all z-50";
+    menu.style.transform = "translateY(-4px)";
+
+    CANVAS_PRESETS.forEach((p) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className =
+        "w-full text-left px-3 py-1.5 text-[11px] text-slate-600 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5 transition flex items-center justify-between";
+      item.innerHTML = `<span>${p.label}</span>`;
+
+      if (p.id === currentAspectPreset) {
+        item.classList.add("text-accent", "font-medium");
+      }
+
+      item.addEventListener("click", () => {
+        applyAspectPreset(p.id);
+        closeCanvasSizeMenu();
+        // Update active state in menu
+        menu.querySelectorAll("button").forEach((b) => {
+          b.classList.remove("text-accent", "font-medium");
+        });
+        item.classList.add("text-accent", "font-medium");
+      });
+
+      menu.appendChild(item);
+    });
+
+    canvasSizeBtn.parentElement.appendChild(menu);
+
+    // Toggle on click
+    canvasSizeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleCanvasSizeMenu();
+    });
+
+    // Close on outside click
+    document.addEventListener("click", (e) => {
+      if (!menu.contains(e.target) && e.target !== canvasSizeBtn) {
+        closeCanvasSizeMenu();
+      }
+    });
+
+    // Close on Escape
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeCanvasSizeMenu();
+    });
+  }
+
+  function toggleCanvasSizeMenu() {
+    const menu = document.getElementById("canvasSizeMenu");
+    if (!menu) return;
+    const isOpen = menu.classList.contains("opacity-100");
+    if (isOpen) closeCanvasSizeMenu();
+    else openCanvasSizeMenu();
+  }
+
+  function openCanvasSizeMenu() {
+    const menu = document.getElementById("canvasSizeMenu");
+    if (!menu) return;
+    menu.classList.remove("opacity-0", "invisible");
+    menu.classList.add("opacity-100", "visible");
+    menu.style.transform = "translateY(0)";
+  }
+
+  function closeCanvasSizeMenu() {
+    const menu = document.getElementById("canvasSizeMenu");
+    if (!menu) return;
+    menu.classList.add("opacity-0", "invisible");
+    menu.classList.remove("opacity-100", "visible");
+    menu.style.transform = "translateY(-4px)";
   }
 
   function clearCanvas() {
@@ -1246,6 +1389,7 @@
       width: brushWidth,
       fill: fillColor.checked,
       theme: getCurrentTheme(),
+      aspect: currentAspectPreset,
     });
   }
 
@@ -1259,6 +1403,7 @@
     selectedColor = settings.color || "#000000";
     brushWidth = settings.width || 5;
     fillColor.checked = !!settings.fill;
+    currentAspectPreset = settings.aspect || "free";
 
     // Apply to UI
     sizeSlider.value = brushWidth;
@@ -1302,12 +1447,18 @@
   async function init() {
     buildColorSwatches();
     loadSavedState();
+    // Restore canvas aspect preset
+    const settings = Storage.loadSettings();
+    if (settings?.aspect) {
+      applyAspectPreset(settings.aspect);
+    }
     bindTools();
     bindHistory();
     bindDrawing();
     bindActions();
     bindKeyboard();
     bindResizeHandles();
+    buildCanvasSizeMenu();
 
     setupCanvas();
 
