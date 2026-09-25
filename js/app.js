@@ -78,6 +78,7 @@
 
   const history = [];
   const redoStack = [];
+  const SNAP_THRESHOLD = 15; // px in CSS pixels
 
   // ---------- Theme ----------
   function applyTheme(theme) {
@@ -536,6 +537,7 @@
   function resetBgTransform() {
     bgTransform = { x: 0, y: 0, scale: 1, rotation: 0, flipH: 1, flipV: 1 };
     applyBgTransform();
+    bgOverlay.classList.remove("snapped-x", "snapped-y");
   }
 
   function zoomBg(factor) {
@@ -897,8 +899,26 @@
     canvas.addEventListener("pointermove", (e) => {
       // 👇 Pan Background
       if (isPanningBg) {
-        bgTransform.x = e.clientX - bgPanStart.x;
-        bgTransform.y = e.clientY - bgPanStart.y;
+        let newX = e.clientX - bgPanStart.x;
+        let newY = e.clientY - bgPanStart.y;
+
+        // 👇 Snap to center
+        if (Math.abs(newX) < SNAP_THRESHOLD) {
+          newX = 0;
+          bgOverlay.classList.add("snapped-x");
+        } else {
+          bgOverlay.classList.remove("snapped-x");
+        }
+
+        if (Math.abs(newY) < SNAP_THRESHOLD) {
+          newY = 0;
+          bgOverlay.classList.add("snapped-y");
+        } else {
+          bgOverlay.classList.remove("snapped-y");
+        }
+
+        bgTransform.x = newX;
+        bgTransform.y = newY;
         applyBgTransform();
         return;
       }
@@ -930,6 +950,7 @@
     const endDraw = () => {
       if (isPanningBg) {
         isPanningBg = false;
+        bgOverlay.classList.remove("snapped-x", "snapped-y");
         return;
       }
       if (isRotatingBg) {

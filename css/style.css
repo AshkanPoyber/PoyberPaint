@@ -185,3 +185,16 @@ body.tool-move-bg canvas:active {
 #bgOverlay #rotateHandle:active {
   cursor: grabbing;
 }
+
+/* ===== Snap indicator ===== */
+#bgOverlay.snapped-x #bgBBox,
+#bgOverlay.snapped-y #bgBBox {
+  stroke: #22c55e;
+  stroke-width: 2.5;
+  opacity: 1;
+}
+
+#bgOverlay.snapped-x #bgBBox,
+#bgOverlay.snapped-y #bgBBox {
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.6));
+}
