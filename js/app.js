@@ -55,6 +55,38 @@
   const DPR = window.devicePixelRatio || 1;
   const SNAP_THRESHOLD = 15;
 
+  const TOOL_KEYS = {
+    b: "brush",
+    e: "eraser",
+    t: "text",
+    r: "rectangle",
+    c: "circle",
+    l: "line",
+    a: "arrow",
+    f: "fill",
+    m: "move-bg",
+  };
+
+  // ---------- App State ----------
+  let isDrawing = false;
+  let selectedTool = "brush";
+  let brushWidth = 5;
+  let selectedColor = "#000000";
+  let startX = 0;
+  let startY = 0;
+  let snapshot = null;
+  let saveIndicatorTimer = null;
+  let textInputEl = null;
+  let backgroundDataURL = null;
+  let bgTransform = { x: 0, y: 0, scale: 1, rotation: 0, flipH: 1, flipV: 1 };
+  let isPanningBg = false;
+  let bgPanStart = { x: 0, y: 0 };
+  let isResizingBg = false;
+  let isRotatingBg = false;
+  let rotateStart = { angle: 0, rotation: 0, centerX: 0, centerY: 0 };
+  let resizeStart = { x: 0, y: 0, scale: 1, centerX: 0, centerY: 0 };
+  let isRenamingLayer = false;
+
   // ═══════════════════════════════════════════════════════
   //  LAYER STORE — Single Source of Truth
   // ═══════════════════════════════════════════════════════
@@ -107,7 +139,6 @@
         redoStack: [],
       };
 
-      // Size it
       const stackRect = layerStack.getBoundingClientRect();
       if (stackRect.width && stackRect.height) {
         canvas.width = Math.floor(stackRect.width * DPR);
@@ -117,11 +148,12 @@
         ctx.lineJoin = "round";
       }
 
-      // Snapshot initial history
       layer.history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
 
       this.layers.push(layer);
-      this.setActive(id);
+      this.activeLayerId = id;
+      canvas.classList.add("active");
+      this._notify();
       return layer;
     },
 
@@ -137,11 +169,21 @@
         this.activeLayerId = this.layers[newIdx].id;
       }
 
+      this.layers.forEach((l) => {
+        l.canvas.classList.toggle("active", l.id === this.activeLayerId);
+      });
       this._notify();
     },
 
     setActive(id) {
       if (!this.getById(id)) return;
+      if (this.activeLayerId === id) {
+        // Still update classes even if same id
+        this.layers.forEach((l) => {
+          l.canvas.classList.toggle("active", l.id === id);
+        });
+        return;
+      }
       this.activeLayerId = id;
       this.layers.forEach((l) => {
         l.canvas.classList.toggle("active", l.id === id);
@@ -168,7 +210,8 @@
       if (!layer) return;
       layer.visible = !layer.visible;
       layer.canvas.style.display = layer.visible ? "" : "none";
-      this._notify();
+      this._render();
+      this._persist();
     },
 
     setOpacity(id, opacity) {
@@ -185,6 +228,7 @@
       if (!source) return;
 
       const dup = this.add(source.name + " copy");
+      dup.ctx.clearRect(0, 0, dup.canvas.width, dup.canvas.height);
       dup.ctx.drawImage(
         source.canvas,
         0,
@@ -207,7 +251,6 @@
       this.nextId = 1;
     },
 
-    // Serialize for storage
     serialize() {
       return {
         activeIndex: Math.max(0, this.getActiveIndex()),
@@ -220,7 +263,6 @@
       };
     },
 
-    // Load from storage (replaces current state)
     async deserialize(data) {
       this.clear();
 
@@ -268,13 +310,11 @@
           });
         }
 
-        // Snapshot initial history
         layer.history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
 
         this.layers.push(layer);
       }
 
-      // Restore active by index
       const safeIndex = Math.max(
         0,
         Math.min(data.activeIndex || 0, this.layers.length - 1),
@@ -286,20 +326,7 @@
     },
   };
 
-  // Keyboard shortcut → tool mapping
-  const TOOL_KEYS = {
-    b: "brush",
-    e: "eraser",
-    t: "text",
-    r: "rectangle",
-    c: "circle",
-    l: "line",
-    a: "arrow",
-    f: "fill",
-    m: "move-bg",
-  };
-
-  // ---------- Layer State ----------
+  // ---------- Layer helpers ----------
   function getActiveLayer() {
     return LayerStore.getActive();
   }
@@ -311,29 +338,6 @@
     const l = LayerStore.getActive();
     return l ? l.ctx : null;
   }
-
-  // ---------- App State ----------
-  let isDrawing = false;
-  let selectedTool = "brush";
-  let brushWidth = 5;
-  let selectedColor = "#000000";
-  let startX = 0;
-  let startY = 0;
-  let snapshot = null;
-  let saveIndicatorTimer = null;
-  let textInputEl = null;
-  let backgroundDataURL = null;
-  let bgTransform = { x: 0, y: 0, scale: 1, rotation: 0, flipH: 1, flipV: 1 };
-  let isPanningBg = false;
-  let bgPanStart = { x: 0, y: 0 };
-  let isResizingBg = false;
-  let isRotatingBg = false;
-  let rotateStart = { angle: 0, rotation: 0, centerX: 0, centerY: 0 };
-  let resizeStart = { x: 0, y: 0, scale: 1, centerX: 0, centerY: 0 };
-
-  // ---------- History (per-layer) ----------
-  // Each layer has its own history array: layer.history, layer.redoStack
-  // Buttons control the ACTIVE layer's history.
 
   // ---------- Theme ----------
   function applyTheme(theme) {
@@ -356,20 +360,19 @@
 
   // ---------- Layer Panel UI ----------
   function renderLayerList() {
-    // Don't re-render if user is mid-rename
+    // Don't re-render while renaming
     if (isRenamingLayer) return;
     if (layerList.querySelector(".layer-name-input")) return;
 
     layerList.innerHTML = "";
 
-    // Render top to bottom
     [...LayerStore.layers].reverse().forEach((layer) => {
       const item = document.createElement("div");
       item.className =
         "layer-item" + (layer.id === LayerStore.activeLayerId ? " active" : "");
       item.dataset.layerId = layer.id;
 
-      // ─── Eye button ───────────────────────
+      // Eye button
       const eyeBtn = document.createElement("button");
       eyeBtn.type = "button";
       eyeBtn.className = "layer-btn" + (layer.visible ? "" : " eye-off");
@@ -382,7 +385,7 @@
         LayerStore.toggleVisible(layer.id);
       });
 
-      // ─── Name ────────────────────────────
+      // Name
       const nameEl = document.createElement("span");
       nameEl.className = "layer-name";
       nameEl.textContent = layer.name;
@@ -392,7 +395,7 @@
         startRenameLayer(layer.id, nameEl);
       });
 
-      // ─── Delete button ───────────────────
+      // Delete
       const delBtn = document.createElement("button");
       delBtn.type = "button";
       delBtn.className = "layer-btn";
@@ -427,10 +430,12 @@
     }
   }
 
-  function startRenameLayer(layer, nameEl) {
-    // Prevent re-entry
-    if (nameEl.dataset.renaming === "1") return;
-    nameEl.dataset.renaming = "1";
+  function startRenameLayer(layerId, nameEl) {
+    if (isRenamingLayer) return;
+    const layer = LayerStore.getById(layerId);
+    if (!layer) return;
+
+    isRenamingLayer = true;
 
     const input = document.createElement("input");
     input.type = "text";
@@ -439,26 +444,20 @@
     input.maxLength = 30;
 
     nameEl.replaceWith(input);
+    input.focus();
+    input.select();
 
-    // Focus after it's actually in the DOM
-    requestAnimationFrame(() => {
-      input.focus();
-      input.select();
-    });
-
-    let done = false;
+    let committed = false;
     const finish = (save) => {
-      if (done) return;
-      done = true;
+      if (committed) return;
+      committed = true;
+      isRenamingLayer = false;
 
       if (save) {
         const newName = input.value.trim() || layer.name;
         layer.name = newName;
-        // Save the full layer state (metadata included)
         persistCanvas();
       }
-
-      // Re-render only the list, not the whole app
       renderLayerList();
     };
 
@@ -473,63 +472,7 @@
       }
     });
 
-    // Attach blur listener only AFTER focus settles
-    setTimeout(() => {
-      input.addEventListener(
-        "blur",
-        () => {
-          finish(true);
-        },
-        { once: true },
-      );
-    }, 80);
-    // Global flag — prevents any re-render while renaming
-    let isRenamingLayer = false;
-
-    function startRenameLayer(layerId, nameEl) {
-      if (isRenamingLayer) return;
-      const layer = LayerStore.getById(layerId);
-      if (!layer) return;
-
-      isRenamingLayer = true;
-
-      const input = document.createElement("input");
-      input.type = "text";
-      input.className = "layer-name-input";
-      input.value = layer.name;
-      input.maxLength = 30;
-
-      nameEl.replaceWith(input);
-      input.focus();
-      input.select();
-
-      let committed = false;
-      const finish = (save) => {
-        if (committed) return;
-        committed = true;
-        isRenamingLayer = false;
-
-        if (save) {
-          const newName = input.value.trim() || layer.name;
-          LayerStore.rename(layerId, newName);
-        } else {
-          renderLayerList();
-        }
-      };
-
-      input.addEventListener("keydown", (e) => {
-        e.stopPropagation();
-        if (e.key === "Enter") {
-          e.preventDefault();
-          finish(true);
-        } else if (e.key === "Escape") {
-          e.preventDefault();
-          finish(false);
-        }
-      });
-
-      input.addEventListener("blur", () => finish(true), { once: true });
-    }
+    input.addEventListener("blur", () => finish(true), { once: true });
   }
 
   // ---------- Canvas Setup ----------
@@ -1235,12 +1178,10 @@
 
   // ---------- Pointer Events ----------
   function bindDrawing() {
-    // Attach to layerStack (delegation) so it works for all layers
     layerStack.addEventListener("pointerdown", (e) => {
       const canvas = getActiveCanvas();
       if (!canvas) return;
 
-      // Move BG
       if (selectedTool === "move-bg") {
         if (!backgroundDataURL) return;
         e.preventDefault();
@@ -1251,14 +1192,12 @@
         return;
       }
 
-      // Text
       if (selectedTool === "text") {
         e.preventDefault();
         openTextInput(e);
         return;
       }
 
-      // Fill
       if (selectedTool === "fill") {
         e.preventDefault();
         const { x, y } = getPos(e);
@@ -1267,7 +1206,6 @@
         return;
       }
 
-      // Draw
       canvas.setPointerCapture(e.pointerId);
       isDrawing = true;
       const { x, y } = getPos(e);
@@ -1361,7 +1299,6 @@
       if (!isDrawing) return;
       isDrawing = false;
 
-      // Reset composite operation
       const ctx = getActiveCtx();
       if (ctx) ctx.globalCompositeOperation = "source-over";
 
@@ -1405,12 +1342,10 @@
       removeBackground();
     });
 
-    // Add layer
     addLayerBtn.addEventListener("click", () => {
       LayerStore.add();
     });
 
-    // Opacity slider
     layerOpacity.addEventListener("input", () => {
       const active = LayerStore.getActive();
       if (!active) return;
@@ -1453,11 +1388,23 @@
       exportCanvas.height = activeCanvas.height;
       const exCtx = exportCanvas.getContext("2d");
 
-      // 1) White base
       exCtx.fillStyle = "#ffffff";
       exCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
 
-      // 2) Background image with transform
+      const finishExport = () => {
+        LayerStore.layers.forEach((layer) => {
+          if (!layer.visible) return;
+          exCtx.globalAlpha = layer.opacity;
+          exCtx.drawImage(layer.canvas, 0, 0);
+        });
+        exCtx.globalAlpha = 1;
+
+        const link = document.createElement("a");
+        link.download = `poyberpaint-${Date.now()}.png`;
+        link.href = exportCanvas.toDataURL("image/png");
+        link.click();
+      };
+
       if (backgroundDataURL) {
         const img = new Image();
         img.onload = () => {
@@ -1480,34 +1427,11 @@
           exCtx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
           exCtx.restore();
 
-          // 3) All visible layers (merged)
-          layers.forEach((layer) => {
-            if (!layer.visible) return;
-            exCtx.globalAlpha = layer.opacity;
-            exCtx.drawImage(layer.canvas, 0, 0);
-          });
-          exCtx.globalAlpha = 1;
-
-          // 4) Download
-          const link = document.createElement("a");
-          link.download = `poyberpaint-${Date.now()}.png`;
-          link.href = exportCanvas.toDataURL("image/png");
-          link.click();
+          finishExport();
         };
         img.src = backgroundDataURL;
       } else {
-        // No bg image — just merge layers
-        layers.forEach((layer) => {
-          if (!layer.visible) return;
-          exCtx.globalAlpha = layer.opacity;
-          exCtx.drawImage(layer.canvas, 0, 0);
-        });
-        exCtx.globalAlpha = 1;
-
-        const link = document.createElement("a");
-        link.download = `poyberpaint-${Date.now()}.png`;
-        link.href = exportCanvas.toDataURL("image/png");
-        link.click();
+        finishExport();
       }
     });
 
@@ -1518,7 +1442,6 @@
         return;
       Storage.clearCanvas();
       Storage.saveSettings({});
-      // 👇 Also clear the layers key
       localStorage.removeItem("poyberpaint:layers");
       location.reload();
     });
@@ -1558,13 +1481,11 @@
         return;
       }
 
-      // Shift+N: new layer
       if (e.shiftKey && k === "n") {
         e.preventDefault();
         LayerStore.add();
         return;
       }
-      // Shift+D: duplicate active layer
       if (e.shiftKey && k === "d") {
         e.preventDefault();
         const active = LayerStore.getActive();
@@ -1653,7 +1574,6 @@
       const data = LayerStore.serialize();
       localStorage.setItem("poyberpaint:layers", JSON.stringify(data));
 
-      // Also keep old key for backwards compat
       const active = LayerStore.getActive();
       if (active) {
         Storage.saveCanvas(active.canvas.toDataURL("image/png"));
@@ -1732,17 +1652,14 @@
     bindKeyboard();
     bindResizeHandles();
 
-    // Try to load saved layers
     const loaded = await loadSavedCanvas();
 
-    // If nothing loaded, create a fresh layer
     if (!loaded) {
       LayerStore.add("Layer 1");
     }
 
     setupCanvas(false);
 
-    // Load background image
     const bgData = Storage.loadBackground();
     if (bgData) {
       applyBackgroundToLayer(bgData);
