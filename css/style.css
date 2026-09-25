@@ -45,7 +45,6 @@ html:not(.dark) body {
 /* ===== Canvas ===== */
 canvas {
   touch-action: none;
-  cursor: crosshair;
   background: transparent;
 }
 
@@ -197,4 +196,33 @@ body.tool-move-bg canvas:active {
 #bgOverlay.snapped-x #bgBBox,
 #bgOverlay.snapped-y #bgBBox {
   filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.6));
+}
+
+/* ===== Layer Stack ===== */
+#layerStack {
+  position: relative;
+  display: block;
+}
+
+#layerStack canvas.layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  pointer-events: none;
+}
+
+#layerStack canvas.layer.active {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+body.tool-move-bg #layerStack canvas.layer.active {
+  cursor: grab;
+}
+body.tool-move-bg #layerStack canvas.layer.active:active {
+  cursor: grabbing;
 }

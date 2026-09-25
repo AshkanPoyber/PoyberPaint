@@ -753,11 +753,11 @@
                 class="pointer-events-auto cursor-nwse-resize"
               />
             </svg>
-            <!-- Canvas (Drawing Layer) -->
-            <canvas
-              id="board"
-              class="relative block w-full h-[60vh] sm:h-[72vh]"
-            ></canvas>
+            <!-- Layer Stack (dynamic canvases go here) -->
+            <div
+              id="layerStack"
+              class="relative w-full h-[60vh] sm:h-[72vh]"
+            ></div>
           </div>
         </section>
       </div>
