@@ -85,7 +85,6 @@
   let isRotatingBg = false;
   let rotateStart = { angle: 0, rotation: 0, centerX: 0, centerY: 0 };
   let resizeStart = { x: 0, y: 0, scale: 1, centerX: 0, centerY: 0 };
-  let isRenamingLayer = false;
 
   // ═══════════════════════════════════════════════════════
   //  LAYER STORE — Single Source of Truth
@@ -128,6 +127,15 @@
       canvas.dataset.layerId = id;
       layerStack.appendChild(canvas);
 
+      const stackRect = layerStack.getBoundingClientRect();
+      if (stackRect.width && stackRect.height) {
+        canvas.width = Math.floor(stackRect.width * DPR);
+        canvas.height = Math.floor(stackRect.height * DPR);
+      }
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
       const layer = {
         id,
         canvas,
@@ -139,20 +147,12 @@
         redoStack: [],
       };
 
-      const stackRect = layerStack.getBoundingClientRect();
-      if (stackRect.width && stackRect.height) {
-        canvas.width = Math.floor(stackRect.width * DPR);
-        canvas.height = Math.floor(stackRect.height * DPR);
-        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-      }
-
       layer.history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
 
       this.layers.push(layer);
       this.activeLayerId = id;
       canvas.classList.add("active");
+
       this._notify();
       return layer;
     },
@@ -177,13 +177,8 @@
 
     setActive(id) {
       if (!this.getById(id)) return;
-      if (this.activeLayerId === id) {
-        // Still update classes even if same id
-        this.layers.forEach((l) => {
-          l.canvas.classList.toggle("active", l.id === id);
-        });
-        return;
-      }
+      if (this.activeLayerId === id) return;
+
       this.activeLayerId = id;
       this.layers.forEach((l) => {
         l.canvas.classList.toggle("active", l.id === id);
@@ -240,7 +235,6 @@
       dup.history.push(
         dup.ctx.getImageData(0, 0, dup.canvas.width, dup.canvas.height),
       );
-      this.setActive(dup.id);
       return dup;
     },
 
@@ -360,8 +354,7 @@
 
   // ---------- Layer Panel UI ----------
   function renderLayerList() {
-    // Don't re-render while renaming
-    if (isRenamingLayer) return;
+    // Don't re-render while an input is open
     if (layerList.querySelector(".layer-name-input")) return;
 
     layerList.innerHTML = "";
@@ -431,11 +424,11 @@
   }
 
   function startRenameLayer(layerId, nameEl) {
-    if (isRenamingLayer) return;
     const layer = LayerStore.getById(layerId);
     if (!layer) return;
 
-    isRenamingLayer = true;
+    // Only one input at a time
+    if (layerList.querySelector(".layer-name-input")) return;
 
     const input = document.createElement("input");
     input.type = "text";
@@ -451,13 +444,16 @@
     const finish = (save) => {
       if (committed) return;
       committed = true;
-      isRenamingLayer = false;
+
+      // Remove input from DOM FIRST so renderLayerList can run
+      if (input.parentNode) input.parentNode.removeChild(input);
 
       if (save) {
         const newName = input.value.trim() || layer.name;
         layer.name = newName;
         persistCanvas();
       }
+
       renderLayerList();
     };
 
@@ -483,39 +479,36 @@
     const canvas = layer.canvas;
     const ctx = layer.ctx;
 
-    let prev = null;
-    if (preserveContent && canvas.width && canvas.height) {
-      try {
-        prev = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      } catch {
-        prev = null;
-      }
+    const newW = Math.floor(stackRect.width * DPR);
+    const newH = Math.floor(stackRect.height * DPR);
+
+    // Skip if size hasn't changed
+    if (canvas.width === newW && canvas.height === newH) {
+      return;
     }
 
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    canvas.width = Math.floor(stackRect.width * DPR);
-    canvas.height = Math.floor(stackRect.height * DPR);
+    // Snapshot current content via a temp canvas
+    let temp = null;
+    if (preserveContent && canvas.width && canvas.height) {
+      temp = document.createElement("canvas");
+      temp.width = canvas.width;
+      temp.height = canvas.height;
+      temp.getContext("2d").drawImage(canvas, 0, 0);
+    }
 
+    // Resize
+    canvas.width = newW;
+    canvas.height = newH;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    if (prev) {
-      const off = document.createElement("canvas");
-      off.width = prev.width;
-      off.height = prev.height;
-      off.getContext("2d").putImageData(prev, 0, 0);
-      ctx.drawImage(
-        off,
-        0,
-        0,
-        prev.width,
-        prev.height,
-        0,
-        0,
-        stackRect.width,
-        stackRect.height,
-      );
+    // Redraw old content scaled to fit
+    if (temp) {
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(temp, 0, 0, temp.width, temp.height, 0, 0, newW, newH);
+      ctx.restore();
     }
   }
 
@@ -605,7 +598,7 @@
     ctx.restore();
   }
 
-  // ---------- History (per-layer) ----------
+  // ---------- History ----------
   function pushHistory() {
     const layer = LayerStore.getActive();
     if (!layer) return;
@@ -1658,7 +1651,6 @@
       LayerStore.add("Layer 1");
       setupCanvas(false);
     }
-    // 👈 اگه loaded بود، canvasها از قبل سایز دارن و محتوا هم لود شده
 
     const bgData = Storage.loadBackground();
     if (bgData) {
