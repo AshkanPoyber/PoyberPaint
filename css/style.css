@@ -226,3 +226,85 @@ body.tool-move-bg #layerStack canvas.layer.active {
 body.tool-move-bg #layerStack canvas.layer.active:active {
   cursor: grabbing;
 }
+
+/* ===== Layer Panel ===== */
+.layer-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+  font-size: 11px;
+  color: #64748b;
+}
+
+html.dark .layer-item {
+  color: #94a3b8;
+}
+
+.layer-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+html.dark .layer-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.layer-item.active {
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.35);
+}
+
+html.dark .layer-item.active {
+  color: #c7d2fe;
+}
+
+.layer-item .layer-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.layer-item .layer-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  opacity: 0.6;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.layer-item .layer-btn:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+html.dark .layer-item .layer-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.layer-item .layer-btn.eye-off {
+  opacity: 0.25;
+}
+
+.layer-item .layer-name-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+  width: 100%;
+}

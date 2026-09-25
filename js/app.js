@@ -33,6 +33,10 @@
   const handleBR = document.getElementById("handleBR");
   const rotateHandle = document.getElementById("rotateHandle");
   const rotateLine = document.getElementById("rotateLine");
+  const layerList = document.getElementById("layerList");
+  const addLayerBtn = document.getElementById("addLayerBtn");
+  const layerOpacity = document.getElementById("layerOpacity");
+  const layerOpacityLabel = document.getElementById("layerOpacityLabel");
 
   // ---------- Constants ----------
   const PALETTE = [
@@ -146,6 +150,7 @@
 
     layers.push(layer);
     resizeLayerCanvas(layer, false);
+    renderLayerList();
     return layer;
   }
 
@@ -160,6 +165,162 @@
     document.body.classList.toggle("tool-move-bg", selectedTool === "move-bg");
 
     updateHistoryButtons();
+    renderLayerList();
+    persistSettings();
+  }
+
+  // ---------- Layer Panel UI ----------
+  function renderLayerList() {
+    layerList.innerHTML = "";
+
+    // Render from top to bottom (last layer is on top visually)
+    [...layers].reverse().forEach((layer) => {
+      const item = document.createElement("div");
+      item.className =
+        "layer-item" + (layer.id === activeLayerId ? " active" : "");
+      item.dataset.layerId = layer.id;
+
+      // Eye toggle
+      const eyeBtn = document.createElement("button");
+      eyeBtn.type = "button";
+      eyeBtn.className = "layer-btn" + (layer.visible ? "" : " eye-off");
+      eyeBtn.title = layer.visible ? "Hide" : "Show";
+      eyeBtn.innerHTML = layer.visible
+        ? `<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>`
+        : `<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>`;
+
+      eyeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        layer.visible = !layer.visible;
+        layer.canvas.style.display = layer.visible ? "" : "none";
+        renderLayerList();
+      });
+
+      // Name (double-click to rename)
+      const nameEl = document.createElement("span");
+      nameEl.className = "layer-name";
+      nameEl.textContent = layer.name;
+      nameEl.title = "Double-click to rename";
+      nameEl.addEventListener("dblclick", (e) => {
+        e.stopPropagation();
+        startRenameLayer(layer, nameEl);
+      });
+
+      // Delete button
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "layer-btn";
+      delBtn.title = "Delete layer";
+      delBtn.innerHTML = `<svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg>`;
+      delBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (layers.length <= 1) {
+          alert("You need at least one layer.");
+          return;
+        }
+        if (!confirm(`Delete "${layer.name}"?`)) return;
+        removeLayer(layer.id);
+        renderLayerList();
+      });
+
+      item.appendChild(eyeBtn);
+      item.appendChild(nameEl);
+      item.appendChild(delBtn);
+
+      item.addEventListener("click", () => {
+        setActiveLayer(layer.id);
+        renderLayerList();
+      });
+
+      layerList.appendChild(item);
+    });
+
+    // Update opacity slider
+    const active = getActiveLayer();
+    if (active) {
+      layerOpacity.value = Math.round(active.opacity * 100);
+      layerOpacityLabel.textContent = Math.round(active.opacity * 100) + "%";
+    }
+  }
+
+  function startRenameLayer(layer, nameEl) {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "layer-name-input";
+    input.value = layer.name;
+    input.maxLength = 30;
+
+    nameEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    const commit = () => {
+      const newName = input.value.trim() || layer.name;
+      layer.name = newName;
+      persistSettings();
+      renderLayerList();
+    };
+
+    input.addEventListener("blur", commit);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        input.blur();
+      } else if (e.key === "Escape") {
+        input.value = layer.name;
+        input.blur();
+      }
+    });
+  }
+
+  function removeLayer(id) {
+    const idx = layers.findIndex((l) => l.id === id);
+    if (idx === -1) return;
+    if (layers.length <= 1) return;
+
+    const layer = layers[idx];
+    layer.canvas.remove();
+    layers.splice(idx, 1);
+
+    if (activeLayerId === id) {
+      const newIdx = Math.max(0, idx - 1);
+      setActiveLayer(layers[newIdx].id);
+    }
+
+    persistCanvas();
+    renderLayerList();
+  }
+
+  function addLayer() {
+    const newLayer = createLayer();
+    // Size it
+    const stackRect = layerStack.getBoundingClientRect();
+    newLayer.canvas.width = Math.floor(stackRect.width * DPR);
+    newLayer.canvas.height = Math.floor(stackRect.height * DPR);
+    newLayer.ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    newLayer.ctx.lineCap = "round";
+    newLayer.ctx.lineJoin = "round";
+
+    setActiveLayer(newLayer.id);
+    renderLayerList();
+    persistSettings();
+  }
+
+  function duplicateLayer(id) {
+    const source = layers.find((l) => l.id === id);
+    if (!source) return;
+
+    const dup = createLayer(source.name + " copy");
+    const stackRect = layerStack.getBoundingClientRect();
+    dup.canvas.width = Math.floor(stackRect.width * DPR);
+    dup.canvas.height = Math.floor(stackRect.height * DPR);
+    dup.ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    dup.ctx.lineCap = "round";
+    dup.ctx.lineJoin = "round";
+    dup.ctx.drawImage(source.canvas, 0, 0, dup.canvas.width, dup.canvas.height);
+
+    setActiveLayer(dup.id);
+    renderLayerList();
     persistSettings();
   }
 
@@ -1031,6 +1192,18 @@
       removeBackground();
     });
 
+    addLayerBtn.addEventListener("click", addLayer);
+
+    layerOpacity.addEventListener("input", () => {
+      const active = getActiveLayer();
+      if (!active) return;
+      const val = +layerOpacity.value;
+      active.opacity = val / 100;
+      active.canvas.style.opacity = active.opacity;
+      layerOpacityLabel.textContent = val + "%";
+      persistSettings();
+    });
+
     document.getElementById("bgZoomIn").addEventListener("click", () => {
       if (!backgroundDataURL) return;
       zoomBg(1.15);
@@ -1168,6 +1341,19 @@
         return;
       }
 
+      // Shift+N: new layer
+      if (e.shiftKey && k === "n") {
+        e.preventDefault();
+        addLayer();
+        return;
+      }
+      // Shift+D: duplicate active layer
+      if (e.shiftKey && k === "d") {
+        e.preventDefault();
+        duplicateLayer(activeLayerId);
+        return;
+      }
+
       if (e.key === "Escape") {
         if (textInputEl) {
           closeTextInput();
@@ -1257,6 +1443,10 @@
       width: brushWidth,
       fill: fillColor.checked,
       theme: getCurrentTheme(),
+      // 👇 Layer metadata (names, visibility, opacity)
+      layerNames: layers.map((l) => l.name),
+      layerVisible: layers.map((l) => l.visible),
+      layerOpacity: layers.map((l) => l.opacity),
     });
   }
 
@@ -1282,6 +1472,13 @@
     });
 
     document.body.classList.toggle("tool-move-bg", selectedTool === "move-bg");
+    // Layer metadata (names, visible, opacity) — applied after layers are created in init()
+    // We store these on a global so init() can use them
+    window.__savedLayerMeta = {
+      names: settings.layerNames || null,
+      visible: settings.layerVisible || null,
+      opacity: settings.layerOpacity || null,
+    };
   }
 
   function loadSavedCanvas() {
@@ -1320,6 +1517,19 @@
     // Create first layer
     createLayer("Layer 1");
     setActiveLayer(layers[0].id);
+    // Apply saved layer metadata (names, visible, opacity)
+    const meta = window.__savedLayerMeta;
+    if (meta) {
+      if (meta.names && meta.names[0]) layers[0].name = meta.names[0];
+      if (meta.visible) layers[0].visible = meta.visible[0];
+      if (meta.opacity) {
+        layers[0].opacity = meta.opacity[0];
+        layers[0].canvas.style.opacity = layers[0].opacity;
+      }
+      if (!layers[0].visible) layers[0].canvas.style.display = "none";
+      delete window.__savedLayerMeta;
+    }
+    renderLayerList();
 
     // Size it now that it's in the DOM
     setupCanvas(false);

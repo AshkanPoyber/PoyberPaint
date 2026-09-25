@@ -157,7 +157,7 @@
 
     <!-- Main -->
     <main class="max-w-[1400px] mx-auto px-4 sm:px-6 pb-6">
-      <div class="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4">
+      <div class="grid grid-cols-1 lg:grid-cols-[260px_1fr_240px] gap-4">
         <!-- Tools Board -->
         <aside
           class="bg-white/70 dark:bg-ink-800/70 backdrop-blur border border-black/5 dark:border-white/5 rounded-2xl p-3 sm:p-4 shadow-xl lg:sticky lg:top-4 lg:self-start"
@@ -760,6 +760,62 @@
             ></div>
           </div>
         </section>
+        <!-- 👇 Layers Panel (جدید) -->
+        <aside
+          class="bg-white/70 dark:bg-ink-800/70 backdrop-blur border border-black/5 dark:border-white/5 rounded-2xl p-3 shadow-xl lg:sticky lg:top-4 lg:self-start"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <h2
+              class="text-[11px] uppercase tracking-widest text-slate-500 font-medium px-1"
+            >
+              Layers
+            </h2>
+            <button
+              id="addLayerBtn"
+              title="Add layer"
+              class="w-6 h-6 rounded-lg grid place-items-center text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 transition"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Layer list -->
+          <div
+            id="layerList"
+            class="space-y-1.5 mb-3 max-h-[50vh] overflow-y-auto no-scrollbar"
+          ></div>
+
+          <!-- Opacity slider -->
+          <div class="pt-3 border-t border-black/5 dark:border-white/5">
+            <div class="flex items-center justify-between mb-1.5 px-1">
+              <span class="text-[11px] text-slate-500 dark:text-slate-400"
+                >Opacity</span
+              >
+              <span
+                id="layerOpacityLabel"
+                class="text-[11px] font-medium text-accent-soft"
+                >100%</span
+              >
+            </div>
+            <input
+              id="layerOpacity"
+              type="range"
+              min="0"
+              max="100"
+              value="100"
+              class="w-full h-1.5 bg-black/10 dark:bg-white/10 rounded-lg appearance-none cursor-pointer"
+            />
+          </div>
+        </aside>
       </div>
       <div
         class="mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px] text-slate-500 dark:text-slate-400"
