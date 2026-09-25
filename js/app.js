@@ -150,7 +150,6 @@
 
     layers.push(layer);
     resizeLayerCanvas(layer, false);
-    renderLayerList();
     return layer;
   }
 
@@ -171,6 +170,11 @@
 
   // ---------- Layer Panel UI ----------
   function renderLayerList() {
+    // Don't re-render if user is mid-rename
+    if (layerList.querySelector(".layer-name-input")) {
+      return;
+    }
+
     layerList.innerHTML = "";
 
     // Render from top to bottom (last layer is on top visually)
@@ -193,6 +197,7 @@
         e.stopPropagation();
         layer.visible = !layer.visible;
         layer.canvas.style.display = layer.visible ? "" : "none";
+        persistCanvas();
         renderLayerList();
       });
 
@@ -220,7 +225,6 @@
         }
         if (!confirm(`Delete "${layer.name}"?`)) return;
         removeLayer(layer.id);
-        renderLayerList();
       });
 
       item.appendChild(eyeBtn);
@@ -229,7 +233,6 @@
 
       item.addEventListener("click", () => {
         setActiveLayer(layer.id);
-        renderLayerList();
       });
 
       layerList.appendChild(item);
@@ -255,38 +258,50 @@
     input.maxLength = 30;
 
     nameEl.replaceWith(input);
-    input.focus();
-    input.select();
 
-    let committed = false;
+    // Focus after it's actually in the DOM
+    requestAnimationFrame(() => {
+      input.focus();
+      input.select();
+    });
 
-    const commit = (save) => {
-      if (committed) return;
-      committed = true;
+    let done = false;
+    const finish = (save) => {
+      if (done) return;
+      done = true;
 
       if (save) {
         const newName = input.value.trim() || layer.name;
         layer.name = newName;
-        persistSettings();
+        // Save the full layer state (metadata included)
+        persistCanvas();
       }
+
+      // Re-render only the list, not the whole app
       renderLayerList();
     };
 
     input.addEventListener("keydown", (e) => {
-      e.stopPropagation(); // Prevent global shortcuts
+      e.stopPropagation();
       if (e.key === "Enter") {
         e.preventDefault();
-        commit(true);
+        finish(true);
       } else if (e.key === "Escape") {
         e.preventDefault();
-        commit(false);
+        finish(false);
       }
     });
 
-    // Use setTimeout so initial focus doesn't trigger blur
+    // Attach blur listener only AFTER focus settles
     setTimeout(() => {
-      input.addEventListener("blur", () => commit(true), { once: true });
-    }, 50);
+      input.addEventListener(
+        "blur",
+        () => {
+          finish(true);
+        },
+        { once: true },
+      );
+    }, 80);
   }
 
   function removeLayer(id) {
@@ -309,7 +324,6 @@
 
   function addLayer() {
     const newLayer = createLayer();
-    // Size it
     const stackRect = layerStack.getBoundingClientRect();
     newLayer.canvas.width = Math.floor(stackRect.width * DPR);
     newLayer.canvas.height = Math.floor(stackRect.height * DPR);
@@ -318,8 +332,7 @@
     newLayer.ctx.lineJoin = "round";
 
     setActiveLayer(newLayer.id);
-    renderLayerList();
-    persistSettings();
+    persistCanvas();
   }
 
   function duplicateLayer(id) {
@@ -336,8 +349,7 @@
     dup.ctx.drawImage(source.canvas, 0, 0, dup.canvas.width, dup.canvas.height);
 
     setActiveLayer(dup.id);
-    renderLayerList();
-    persistSettings();
+    persistCanvas();
   }
 
   // ---------- Canvas Setup ----------
@@ -1217,7 +1229,7 @@
       active.opacity = val / 100;
       active.canvas.style.opacity = active.opacity;
       layerOpacityLabel.textContent = val + "%";
-      persistSettings();
+      persistCanvas();
     });
 
     document.getElementById("bgZoomIn").addEventListener("click", () => {
@@ -1445,24 +1457,28 @@
   // ---------- Persist ----------
   function persistCanvas() {
     if (!Storage.available) return;
-    // Save ALL layers' pixel data + metadata
+
+    // Serialize layers with metadata + active INDEX (not ID)
     const layerData = layers.map((l) => ({
-      id: l.id,
       name: l.name,
       visible: l.visible,
       opacity: l.opacity,
       dataURL: l.canvas.toDataURL("image/png"),
     }));
 
+    const activeIndex = Math.max(
+      0,
+      layers.findIndex((l) => l.id === activeLayerId),
+    );
+
     try {
       localStorage.setItem(
         "poyberpaint:layers",
         JSON.stringify({
-          activeLayerId,
+          activeIndex,
           layers: layerData,
         }),
       );
-      // Also keep the old single-canvas key for backwards compat
       const active = getActiveLayer();
       if (active) {
         Storage.saveCanvas(active.canvas.toDataURL("image/png"));
@@ -1481,10 +1497,6 @@
       width: brushWidth,
       fill: fillColor.checked,
       theme: getCurrentTheme(),
-      // 👇 Layer metadata (names, visibility, opacity)
-      layerNames: layers.map((l) => l.name),
-      layerVisible: layers.map((l) => l.visible),
-      layerOpacity: layers.map((l) => l.opacity),
     });
   }
 
@@ -1510,13 +1522,6 @@
     });
 
     document.body.classList.toggle("tool-move-bg", selectedTool === "move-bg");
-    // Layer metadata (names, visible, opacity) — applied after layers are created in init()
-    // We store these on a global so init() can use them
-    window.__savedLayerMeta = {
-      names: settings.layerNames || null,
-      visible: settings.layerVisible || null,
-      opacity: settings.layerOpacity || null,
-    };
   }
 
   async function loadSavedCanvas() {
@@ -1535,15 +1540,26 @@
 
     if (!parsed?.layers?.length) return false;
 
-    // Clear existing layers (created in init)
+    // Clear existing layers
     layers.forEach((l) => l.canvas.remove());
     layers = [];
     nextLayerId = 1;
 
-    // Recreate all layers from saved data
+    const stackRect = layerStack.getBoundingClientRect();
+    const w = stackRect.width;
+    const h = stackRect.height;
+
+    // Recreate each layer with explicit sizing BEFORE drawing
     const loadPromises = parsed.layers.map((meta, idx) => {
       return new Promise((resolve) => {
-        const layer = createLayer(meta.name);
+        const layer = createLayer(meta.name || `Layer ${idx + 1}`);
+
+        // Force canvas size (createLayer may not have measured yet)
+        layer.canvas.width = Math.floor(w * DPR);
+        layer.canvas.height = Math.floor(h * DPR);
+        layer.ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        layer.ctx.lineCap = "round";
+        layer.ctx.lineJoin = "round";
 
         // Restore metadata
         layer.visible = meta.visible !== false;
@@ -1556,16 +1572,7 @@
 
         const img = new Image();
         img.onload = () => {
-          const { canvas, ctx } = layer;
-          // Ensure canvas has correct dimensions
-          const stackRect = layerStack.getBoundingClientRect();
-          canvas.width = Math.floor(stackRect.width * DPR);
-          canvas.height = Math.floor(stackRect.height * DPR);
-          ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-
-          ctx.drawImage(img, 0, 0, stackRect.width, stackRect.height);
+          layer.ctx.drawImage(img, 0, 0, w, h);
           resolve();
         };
         img.onerror = () => resolve();
@@ -1575,13 +1582,20 @@
 
     await Promise.all(loadPromises);
 
-    // Set active layer
-    const activeId = parsed.activeLayerId;
-    if (activeId && layers.find((l) => l.id === activeId)) {
-      setActiveLayer(activeId);
-    } else if (layers.length) {
-      setActiveLayer(layers[0].id);
-    }
+    // Restore active layer by INDEX (stable across reloads)
+    const activeIndex =
+      typeof parsed.activeIndex === "number" ? parsed.activeIndex : 0;
+    const safeIndex = Math.max(0, Math.min(activeIndex, layers.length - 1));
+    setActiveLayer(layers[safeIndex].id);
+
+    // Per-layer initial history
+    layers.forEach((layer) => {
+      layer.history = [
+        layer.ctx.getImageData(0, 0, layer.canvas.width, layer.canvas.height),
+      ];
+      layer.redoStack = [];
+    });
+    updateHistoryButtons();
 
     renderLayerList();
     return true;
@@ -1601,21 +1615,18 @@
     // Create a default layer (will be replaced if saved data exists)
     createLayer("Layer 1");
     setActiveLayer(layers[0].id);
-
     setupCanvas(false);
 
-    // Load saved layers (this will replace the default one if data exists)
+    // Load saved layers (may replace the default one)
     const loaded = await loadSavedCanvas();
 
-    // If nothing loaded, just push the current state
+    // If nothing loaded, initialize history
     if (!loaded) {
-      pushHistory();
-    } else {
-      // Push history per-layer
       layers.forEach((layer) => {
-        layer.history.push(
+        layer.history = [
           layer.ctx.getImageData(0, 0, layer.canvas.width, layer.canvas.height),
-        );
+        ];
+        layer.redoStack = [];
       });
       updateHistoryButtons();
       showSaved();
