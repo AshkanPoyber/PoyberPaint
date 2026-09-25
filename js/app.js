@@ -1656,9 +1656,9 @@
 
     if (!loaded) {
       LayerStore.add("Layer 1");
+      setupCanvas(false);
     }
-
-    setupCanvas(false);
+    // 👈 اگه loaded بود، canvasها از قبل سایز دارن و محتوا هم لود شده
 
     const bgData = Storage.loadBackground();
     if (bgData) {
