@@ -43,33 +43,44 @@ Draw. Sketch. Create.
 </td>
 <td width="50%">
 
-### ⚡ Experience
+### 🗂️ Layers
 
-- ↩️ **Undo / Redo** — with `Ctrl+Z` / `Ctrl+Y`
-- 💾 **Export PNG** — one click, `Ctrl+S`
-- 🌗 **Light / Dark theme** — auto-saved
-- 💽 **Auto-save** — persists across reloads
-- 📱 **Fully responsive** — works on any screen
-- 🖱️ **Pointer Events** — mouse, touch, stylus
-- 🖥️ **Retina-ready** — crisp on high-DPI
+- 🎨 **Multi-layer support** — add, delete, duplicate, rename
+- 👁️ **Visibility toggle** — hide/show individual layers
+- 🎚️ **Opacity slider** — per-layer transparency
+- 🔄 **Active layer switching** — click to select
+- 💾 **Full persistence** — all layers survive reloads
 
 </td>
-</tr>
-</table>
-
----
+<td width="50%">
 
 ### 🖼️ Image Layer
-
-Import any image as a reference layer — perfect for tracing, mood boards, or drawing over photos.
 
 - 📤 **Import** — load JPG, PNG, WebP, GIF (auto-compressed)
 - 🖐️ **Pan** — drag to reposition
 - 🔍 **Zoom** — mouse wheel or buttons
 - 📐 **Resize** — drag any corner handle
 - 🔄 **Rotate** — drag the top handle (Shift to snap)
-- 🎯 **Reset** — restore original position
+- ↔️ **Flip** — horizontal and vertical
+- 🎯 **Snap to center**
 - 💾 **Persisted** — transform survives reloads
+
+</td>
+<td width="50%">
+
+### ⚡ Experience
+
+- ↩️ **Undo / Redo** — per-layer, with `Ctrl+Z` / `Ctrl+Y`
+- 💾 **Export PNG** — merges all visible layers, `Ctrl+S`
+- 🌗 **Light / Dark theme** — auto-saved
+- 📱 **Fully responsive**
+- 🖱️ **Pointer Events** — mouse, touch, stylus
+- 🖥️ **Retina-ready**
+- ⌨️ **Keyboard shortcuts** — tools, colors, sizes, layers
+
+</td>
+</tr>
+</table>
 
 ---
 
@@ -198,8 +209,10 @@ PoyberPaint/
 - [x] Light / dark theme toggle
 - [x] LocalStorage persistence
 - [x] Image import with pan, zoom, resize, rotate
-- [ ] Layer system
+- [x] **Layer system**
 - [ ] Export to SVG
+- [ ] Custom canvas size
+- [ ] Gradient tool
 - [ ] Background removal
 
 ## 🤝 Contributing
