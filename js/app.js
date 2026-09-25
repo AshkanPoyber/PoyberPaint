@@ -51,6 +51,19 @@
   const MAX_HISTORY = 30;
   const DPR = window.devicePixelRatio || 1;
 
+  // Keyboard shortcut → tool mapping
+  const TOOL_KEYS = {
+    b: "brush",
+    e: "eraser",
+    t: "text",
+    r: "rectangle",
+    c: "circle",
+    l: "line",
+    a: "arrow",
+    f: "fill",
+    m: "move-bg",
+  };
+
   // ---------- State ----------
   let isDrawing = false;
   let selectedTool = "brush";
@@ -1103,17 +1116,97 @@
   // ---------- Keyboard ----------
   function bindKeyboard() {
     document.addEventListener("keydown", (e) => {
-      if (!(e.ctrlKey || e.metaKey)) return;
+      // Don't intercept if user is typing in an input
+      const tag = (e.target.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea") {
+        // Only Esc is allowed to close text input
+        if (e.key === "Escape" && textInputEl) {
+          closeTextInput();
+          e.preventDefault();
+        }
+        return;
+      }
+
       const k = e.key.toLowerCase();
-      if (k === "z" && !e.shiftKey) {
+      const ctrl = e.ctrlKey || e.metaKey;
+
+      // ---- Ctrl/Cmd combos ----
+      if (ctrl) {
+        if (k === "z" && !e.shiftKey) {
+          e.preventDefault();
+          undoBtn.click();
+          return;
+        }
+        if (k === "y" || (k === "z" && e.shiftKey)) {
+          e.preventDefault();
+          redoBtn.click();
+          return;
+        }
+        if (k === "s") {
+          e.preventDefault();
+          document.getElementById("save").click();
+          return;
+        }
+        return; // Don't process Ctrl+ for other keys
+      }
+
+      // ---- Single-key shortcuts ----
+
+      // Escape: cancel text input or deselect move-bg
+      if (e.key === "Escape") {
+        if (textInputEl) {
+          closeTextInput();
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // Tool selection
+      if (TOOL_KEYS[k]) {
+        const targetBtn = document.querySelector(
+          `.tool-btn[data-tool="${TOOL_KEYS[k]}"]`,
+        );
+        if (targetBtn) {
+          targetBtn.click();
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // Color: 1-9 (numbers)
+      if (k >= "1" && k <= "9") {
+        const idx = parseInt(k, 10) - 1;
+        const swatches = colorRow.querySelectorAll(".swatch");
+        if (swatches[idx]) {
+          swatches[idx].click();
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // Size: [ and ]
+      if (e.key === "[") {
+        const newVal = Math.max(1, brushWidth - 1);
+        sizeSlider.value = newVal;
+        sizeSlider.dispatchEvent(new Event("input", { bubbles: true }));
         e.preventDefault();
-        undoBtn.click();
-      } else if (k === "y" || (k === "z" && e.shiftKey)) {
+        return;
+      }
+      if (e.key === "]") {
+        const newVal = Math.min(60, brushWidth + 1);
+        sizeSlider.value = newVal;
+        sizeSlider.dispatchEvent(new Event("input", { bubbles: true }));
         e.preventDefault();
-        redoBtn.click();
-      } else if (k === "s") {
-        e.preventDefault();
-        document.getElementById("save").click();
+        return;
+      }
+
+      // 0: reset background transform
+      if (k === "0") {
+        if (backgroundDataURL) {
+          resetBgTransform();
+          e.preventDefault();
+        }
+        return;
       }
     });
   }
