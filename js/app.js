@@ -24,6 +24,8 @@
   const clearBgBtn = document.getElementById("clearBg");
   const bgLayer = document.getElementById("bgLayer");
   const bgControls = document.getElementById("bgControls");
+  const bgFlipHBtn = document.getElementById("bgFlipH");
+  const bgFlipVBtn = document.getElementById("bgFlipV");
   const bgOverlay = document.getElementById("bgOverlay");
   const bgBBox = document.getElementById("bgBBox");
   const handleTL = document.getElementById("handleTL");
@@ -60,7 +62,7 @@
   let saveIndicatorTimer = null;
   let textInputEl = null;
   let backgroundDataURL = null;
-  let bgTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
+  let bgTransform = { x: 0, y: 0, scale: 1, rotation: 0, flipH: 1, flipV: 1 };
   let isPanningBg = false;
   let bgPanStart = { x: 0, y: 0 };
   let isResizingBg = false;
@@ -301,7 +303,7 @@
 
   // ---------- Background Transform ----------
   function applyBgTransform() {
-    bgLayer.style.transform = `translate(${bgTransform.x}px, ${bgTransform.y}px) scale(${bgTransform.scale}) rotate(${bgTransform.rotation}deg)`;
+    bgLayer.style.transform = `translate(${bgTransform.x}px, ${bgTransform.y}px) scale(${bgTransform.scale * bgTransform.flipH}, ${bgTransform.scale * bgTransform.flipV}) rotate(${bgTransform.rotation}deg)`;
     Storage.saveBgTransform(bgTransform);
     updateBgOverlay();
   }
@@ -532,7 +534,7 @@
   }
 
   function resetBgTransform() {
-    bgTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
+    bgTransform = { x: 0, y: 0, scale: 1, rotation: 0, flipH: 1, flipV: 1 };
     applyBgTransform();
   }
 
@@ -550,9 +552,11 @@
         y: saved.y || 0,
         scale: saved.scale || 1,
         rotation: saved.rotation || 0,
+        flipH: saved.flipH || 1,
+        flipV: saved.flipV || 1,
       };
     } else {
-      bgTransform = { x: 0, y: 0, scale: 1, rotation: 0 };
+      bgTransform = { x: 0, y: 0, scale: 1, rotation: 0, flipH: 1, flipV: 1 };
     }
     applyBgTransform();
   }
@@ -954,6 +958,18 @@
       pushHistory();
     });
 
+    bgFlipHBtn.addEventListener("click", () => {
+      if (!backgroundDataURL) return;
+      bgTransform.flipH *= -1;
+      applyBgTransform();
+    });
+
+    bgFlipVBtn.addEventListener("click", () => {
+      if (!backgroundDataURL) return;
+      bgTransform.flipV *= -1;
+      applyBgTransform();
+    });
+
     bgUpload.addEventListener("change", (e) => {
       const file = e.target.files?.[0];
       if (file) handleBackgroundUpload(file);
@@ -1015,8 +1031,10 @@
           // Contain-fit base scale (in CSS pixels, then × DPR)
           const fitScale = Math.min(rect.width / iw, rect.height / ih) * dpr;
 
-          const dw = iw * fitScale * bgTransform.scale;
-          const dh = ih * fitScale * bgTransform.scale;
+          const dw =
+            iw * fitScale * bgTransform.scale * Math.abs(bgTransform.flipH);
+          const dh =
+            ih * fitScale * bgTransform.scale * Math.abs(bgTransform.flipV);
 
           // Center of export canvas + user offset (in DPR px)
           const cx = exportCanvas.width / 2 + bgTransform.x * dpr;
@@ -1025,6 +1043,8 @@
           exCtx.save();
           exCtx.translate(cx, cy);
           exCtx.rotate((bgTransform.rotation * Math.PI) / 180);
+          // Apply flip via scale
+          exCtx.scale(bgTransform.flipH, bgTransform.flipV);
           exCtx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
           exCtx.restore();
 

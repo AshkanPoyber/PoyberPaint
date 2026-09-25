@@ -453,8 +453,25 @@
                 </svg>
               </button>
               <button
+                id="bgZoomIn"
+                title="Zoom in"
+                class="flex items-center justify-center py-1.5 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.3-4.3M11 8v6M8 11h6" />
+                </svg>
+              </button>
+              <button
                 id="bgReset"
-                title="Reset background"
+                title="Reset transform"
                 class="flex items-center justify-center gap-1 py-1.5 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition"
               >
                 <svg
@@ -471,10 +488,12 @@
                 </svg>
                 <span class="text-[10px]">Reset</span>
               </button>
+
+              <!-- 👇 جدید: Flip H -->
               <button
-                id="bgZoomIn"
-                title="Zoom in"
-                class="flex items-center justify-center py-1.5 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition"
+                id="bgFlipH"
+                title="Flip horizontal"
+                class="flex items-center justify-center gap-1 py-1.5 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -483,10 +502,35 @@
                   stroke="currentColor"
                   stroke-width="2"
                   stroke-linecap="round"
+                  stroke-linejoin="round"
                 >
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="M21 21l-4.3-4.3M11 8v6M8 11h6" />
+                  <path d="M12 3v18" stroke-dasharray="2 2" />
+                  <path d="M8 7l-4 5 4 5V7z" />
+                  <path d="M16 7l4 5-4 5V7z" />
                 </svg>
+                <span class="text-[10px]">Flip H</span>
+              </button>
+
+              <!-- 👇 جدید: Flip V -->
+              <button
+                id="bgFlipV"
+                title="Flip vertical"
+                class="flex items-center justify-center gap-1 py-1.5 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 12h18" stroke-dasharray="2 2" />
+                  <path d="M7 8l5-4 5 4H7z" />
+                  <path d="M7 16l5 4 5-4H7z" />
+                </svg>
+                <span class="text-[10px]">Flip V</span>
               </button>
             </div>
 
