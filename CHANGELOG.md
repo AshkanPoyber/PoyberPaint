@@ -16,6 +16,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0.0] - 2026-09-25
+
+### Added
+
+- 🗂️ Layer system with multi-canvas architecture
+- 👁️ Visibility toggle per layer
+- 🎚️ Opacity slider per layer
+- 🔄 Active layer switching
+- ✏️ Layer rename (double-click)
+- 🗑️ Layer delete with confirmation
+- 📋 Layer duplicate (Shift+D)
+- ⌨️ Shift+N shortcut for new layer
+- 💾 Full multi-layer persistence
+
+### Changed
+
+- Refactored to `LayerStore` as single source of truth
+- Undo/redo is now per-layer
+- Save PNG merges all visible layers
+
+### Fixed
+
+- Drawing wiped on page reload (resize corruption)
+- Rename input stuck, blocking UI
+- Layer list not refreshing after rename
+
 ## [1.3.0] - 2026-09-24
 
 ### Added
