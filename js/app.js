@@ -55,6 +55,237 @@
   const DPR = window.devicePixelRatio || 1;
   const SNAP_THRESHOLD = 15;
 
+  // ═══════════════════════════════════════════════════════
+  //  LAYER STORE — Single Source of Truth
+  // ═══════════════════════════════════════════════════════
+  const LayerStore = {
+    layers: [],
+    activeLayerId: null,
+    nextId: 1,
+
+    // ─── Queries ─────────────────────────────────
+    getActive() {
+      return this.layers.find((l) => l.id === this.activeLayerId);
+    },
+    getById(id) {
+      return this.layers.find((l) => l.id === id);
+    },
+    getActiveIndex() {
+      return this.layers.findIndex((l) => l.id === this.activeLayerId);
+    },
+
+    // ─── Internal side effects ──────────────────
+    _render() {
+      renderLayerList();
+    },
+    _persist() {
+      persistCanvas();
+    },
+    _notify() {
+      this._render();
+      this._persist();
+      updateHistoryButtons();
+    },
+
+    // ─── Mutations ───────────────────────────────
+    add(name) {
+      const id = `layer-${this.nextId++}`;
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      canvas.className = "layer";
+      canvas.dataset.layerId = id;
+      layerStack.appendChild(canvas);
+
+      const layer = {
+        id,
+        canvas,
+        ctx,
+        name: name || `Layer ${this.nextId - 1}`,
+        visible: true,
+        opacity: 1,
+        history: [],
+        redoStack: [],
+      };
+
+      // Size it
+      const stackRect = layerStack.getBoundingClientRect();
+      if (stackRect.width && stackRect.height) {
+        canvas.width = Math.floor(stackRect.width * DPR);
+        canvas.height = Math.floor(stackRect.height * DPR);
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+      }
+
+      // Snapshot initial history
+      layer.history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+
+      this.layers.push(layer);
+      this.setActive(id);
+      return layer;
+    },
+
+    remove(id) {
+      const idx = this.layers.findIndex((l) => l.id === id);
+      if (idx === -1 || this.layers.length <= 1) return;
+
+      const [removed] = this.layers.splice(idx, 1);
+      removed.canvas.remove();
+
+      if (this.activeLayerId === id) {
+        const newIdx = Math.max(0, idx - 1);
+        this.activeLayerId = this.layers[newIdx].id;
+      }
+
+      this._notify();
+    },
+
+    setActive(id) {
+      if (!this.getById(id)) return;
+      this.activeLayerId = id;
+      this.layers.forEach((l) => {
+        l.canvas.classList.toggle("active", l.id === id);
+      });
+      document.body.classList.toggle(
+        "tool-move-bg",
+        selectedTool === "move-bg",
+      );
+      this._notify();
+    },
+
+    rename(id, newName) {
+      const layer = this.getById(id);
+      if (!layer) return;
+      const trimmed = (newName || "").trim();
+      if (!trimmed) return;
+      layer.name = trimmed;
+      this._render();
+      this._persist();
+    },
+
+    toggleVisible(id) {
+      const layer = this.getById(id);
+      if (!layer) return;
+      layer.visible = !layer.visible;
+      layer.canvas.style.display = layer.visible ? "" : "none";
+      this._notify();
+    },
+
+    setOpacity(id, opacity) {
+      const layer = this.getById(id);
+      if (!layer) return;
+      layer.opacity = Math.max(0, Math.min(1, opacity));
+      layer.canvas.style.opacity = layer.opacity;
+      this._render();
+      this._persist();
+    },
+
+    duplicate(id) {
+      const source = this.getById(id);
+      if (!source) return;
+
+      const dup = this.add(source.name + " copy");
+      dup.ctx.drawImage(
+        source.canvas,
+        0,
+        0,
+        dup.canvas.width,
+        dup.canvas.height,
+      );
+      dup.history = [];
+      dup.history.push(
+        dup.ctx.getImageData(0, 0, dup.canvas.width, dup.canvas.height),
+      );
+      this.setActive(dup.id);
+      return dup;
+    },
+
+    clear() {
+      this.layers.forEach((l) => l.canvas.remove());
+      this.layers = [];
+      this.activeLayerId = null;
+      this.nextId = 1;
+    },
+
+    // Serialize for storage
+    serialize() {
+      return {
+        activeIndex: Math.max(0, this.getActiveIndex()),
+        layers: this.layers.map((l) => ({
+          name: l.name,
+          visible: l.visible,
+          opacity: l.opacity,
+          dataURL: l.canvas.toDataURL("image/png"),
+        })),
+      };
+    },
+
+    // Load from storage (replaces current state)
+    async deserialize(data) {
+      this.clear();
+
+      const stackRect = layerStack.getBoundingClientRect();
+      const w = stackRect.width;
+      const h = stackRect.height;
+
+      for (let i = 0; i < data.layers.length; i++) {
+        const meta = data.layers[i];
+        const id = `layer-${this.nextId++}`;
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        canvas.className = "layer";
+        canvas.dataset.layerId = id;
+        canvas.width = Math.floor(w * DPR);
+        canvas.height = Math.floor(h * DPR);
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        layerStack.appendChild(canvas);
+
+        const layer = {
+          id,
+          canvas,
+          ctx,
+          name: meta.name || `Layer ${i + 1}`,
+          visible: meta.visible !== false,
+          opacity: typeof meta.opacity === "number" ? meta.opacity : 1,
+          history: [],
+          redoStack: [],
+        };
+
+        if (!layer.visible) canvas.style.display = "none";
+        canvas.style.opacity = layer.opacity;
+
+        if (meta.dataURL) {
+          await new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              ctx.drawImage(img, 0, 0, w, h);
+              resolve();
+            };
+            img.onerror = resolve;
+            img.src = meta.dataURL;
+          });
+        }
+
+        // Snapshot initial history
+        layer.history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+
+        this.layers.push(layer);
+      }
+
+      // Restore active by index
+      const safeIndex = Math.max(
+        0,
+        Math.min(data.activeIndex || 0, this.layers.length - 1),
+      );
+      this.activeLayerId = this.layers[safeIndex].id;
+      this.layers.forEach((l) => {
+        l.canvas.classList.toggle("active", l.id === this.activeLayerId);
+      });
+    },
+  };
+
   // Keyboard shortcut → tool mapping
   const TOOL_KEYS = {
     b: "brush",
@@ -69,19 +300,15 @@
   };
 
   // ---------- Layer State ----------
-  let layers = [];
-  let activeLayerId = null;
-  let nextLayerId = 1;
-
   function getActiveLayer() {
-    return layers.find((l) => l.id === activeLayerId);
+    return LayerStore.getActive();
   }
   function getActiveCanvas() {
-    const l = getActiveLayer();
+    const l = LayerStore.getActive();
     return l ? l.canvas : null;
   }
   function getActiveCtx() {
-    const l = getActiveLayer();
+    const l = LayerStore.getActive();
     return l ? l.ctx : null;
   }
 
@@ -127,64 +354,22 @@
     Storage.saveSettings(settings);
   }
 
-  // ---------- Layer Creation ----------
-  function createLayer(name, options = {}) {
-    const id = `layer-${nextLayerId++}`;
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-
-    canvas.className = "layer";
-    canvas.dataset.layerId = id;
-    layerStack.appendChild(canvas);
-
-    const layer = {
-      id,
-      canvas,
-      ctx,
-      name: name || `Layer ${nextLayerId - 1}`,
-      visible: true,
-      opacity: 1,
-      history: [],
-      redoStack: [],
-    };
-
-    layers.push(layer);
-    resizeLayerCanvas(layer, false);
-    return layer;
-  }
-
-  function setActiveLayer(id) {
-    if (!layers.find((l) => l.id === id)) return;
-    activeLayerId = id;
-
-    layers.forEach((l) => {
-      l.canvas.classList.toggle("active", l.id === id);
-    });
-
-    document.body.classList.toggle("tool-move-bg", selectedTool === "move-bg");
-
-    updateHistoryButtons();
-    renderLayerList();
-    persistSettings();
-  }
-
   // ---------- Layer Panel UI ----------
   function renderLayerList() {
     // Don't re-render if user is mid-rename
-    if (layerList.querySelector(".layer-name-input")) {
-      return;
-    }
+    if (isRenamingLayer) return;
+    if (layerList.querySelector(".layer-name-input")) return;
 
     layerList.innerHTML = "";
 
-    // Render from top to bottom (last layer is on top visually)
-    [...layers].reverse().forEach((layer) => {
+    // Render top to bottom
+    [...LayerStore.layers].reverse().forEach((layer) => {
       const item = document.createElement("div");
       item.className =
-        "layer-item" + (layer.id === activeLayerId ? " active" : "");
+        "layer-item" + (layer.id === LayerStore.activeLayerId ? " active" : "");
       item.dataset.layerId = layer.id;
 
-      // Eye toggle
+      // ─── Eye button ───────────────────────
       const eyeBtn = document.createElement("button");
       eyeBtn.type = "button";
       eyeBtn.className = "layer-btn" + (layer.visible ? "" : " eye-off");
@@ -192,26 +377,22 @@
       eyeBtn.innerHTML = layer.visible
         ? `<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>`
         : `<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>`;
-
       eyeBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        layer.visible = !layer.visible;
-        layer.canvas.style.display = layer.visible ? "" : "none";
-        persistCanvas();
-        renderLayerList();
+        LayerStore.toggleVisible(layer.id);
       });
 
-      // Name (double-click to rename)
+      // ─── Name ────────────────────────────
       const nameEl = document.createElement("span");
       nameEl.className = "layer-name";
       nameEl.textContent = layer.name;
       nameEl.title = "Double-click to rename";
       nameEl.addEventListener("dblclick", (e) => {
         e.stopPropagation();
-        startRenameLayer(layer, nameEl);
+        startRenameLayer(layer.id, nameEl);
       });
 
-      // Delete button
+      // ─── Delete button ───────────────────
       const delBtn = document.createElement("button");
       delBtn.type = "button";
       delBtn.className = "layer-btn";
@@ -219,12 +400,12 @@
       delBtn.innerHTML = `<svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg>`;
       delBtn.addEventListener("click", (e) => {
         e.stopPropagation();
-        if (layers.length <= 1) {
+        if (LayerStore.layers.length <= 1) {
           alert("You need at least one layer.");
           return;
         }
         if (!confirm(`Delete "${layer.name}"?`)) return;
-        removeLayer(layer.id);
+        LayerStore.remove(layer.id);
       });
 
       item.appendChild(eyeBtn);
@@ -232,14 +413,14 @@
       item.appendChild(delBtn);
 
       item.addEventListener("click", () => {
-        setActiveLayer(layer.id);
+        LayerStore.setActive(layer.id);
       });
 
       layerList.appendChild(item);
     });
 
     // Update opacity slider
-    const active = getActiveLayer();
+    const active = LayerStore.getActive();
     if (active) {
       layerOpacity.value = Math.round(active.opacity * 100);
       layerOpacityLabel.textContent = Math.round(active.opacity * 100) + "%";
@@ -302,54 +483,53 @@
         { once: true },
       );
     }, 80);
-  }
+    // Global flag — prevents any re-render while renaming
+    let isRenamingLayer = false;
 
-  function removeLayer(id) {
-    const idx = layers.findIndex((l) => l.id === id);
-    if (idx === -1) return;
-    if (layers.length <= 1) return;
+    function startRenameLayer(layerId, nameEl) {
+      if (isRenamingLayer) return;
+      const layer = LayerStore.getById(layerId);
+      if (!layer) return;
 
-    const layer = layers[idx];
-    layer.canvas.remove();
-    layers.splice(idx, 1);
+      isRenamingLayer = true;
 
-    if (activeLayerId === id) {
-      const newIdx = Math.max(0, idx - 1);
-      setActiveLayer(layers[newIdx].id);
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "layer-name-input";
+      input.value = layer.name;
+      input.maxLength = 30;
+
+      nameEl.replaceWith(input);
+      input.focus();
+      input.select();
+
+      let committed = false;
+      const finish = (save) => {
+        if (committed) return;
+        committed = true;
+        isRenamingLayer = false;
+
+        if (save) {
+          const newName = input.value.trim() || layer.name;
+          LayerStore.rename(layerId, newName);
+        } else {
+          renderLayerList();
+        }
+      };
+
+      input.addEventListener("keydown", (e) => {
+        e.stopPropagation();
+        if (e.key === "Enter") {
+          e.preventDefault();
+          finish(true);
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          finish(false);
+        }
+      });
+
+      input.addEventListener("blur", () => finish(true), { once: true });
     }
-
-    persistCanvas();
-    renderLayerList();
-  }
-
-  function addLayer() {
-    const newLayer = createLayer();
-    const stackRect = layerStack.getBoundingClientRect();
-    newLayer.canvas.width = Math.floor(stackRect.width * DPR);
-    newLayer.canvas.height = Math.floor(stackRect.height * DPR);
-    newLayer.ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    newLayer.ctx.lineCap = "round";
-    newLayer.ctx.lineJoin = "round";
-
-    setActiveLayer(newLayer.id);
-    persistCanvas();
-  }
-
-  function duplicateLayer(id) {
-    const source = layers.find((l) => l.id === id);
-    if (!source) return;
-
-    const dup = createLayer(source.name + " copy");
-    const stackRect = layerStack.getBoundingClientRect();
-    dup.canvas.width = Math.floor(stackRect.width * DPR);
-    dup.canvas.height = Math.floor(stackRect.height * DPR);
-    dup.ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    dup.ctx.lineCap = "round";
-    dup.ctx.lineJoin = "round";
-    dup.ctx.drawImage(source.canvas, 0, 0, dup.canvas.width, dup.canvas.height);
-
-    setActiveLayer(dup.id);
-    persistCanvas();
   }
 
   // ---------- Canvas Setup ----------
@@ -397,7 +577,7 @@
   }
 
   function setupCanvas(preserveContent = true) {
-    layers.forEach((l) => resizeLayerCanvas(l, preserveContent));
+    LayerStore.layers.forEach((l) => resizeLayerCanvas(l, preserveContent));
     updateBgOverlay();
   }
 
@@ -484,7 +664,7 @@
 
   // ---------- History (per-layer) ----------
   function pushHistory() {
-    const layer = getActiveLayer();
+    const layer = LayerStore.getActive();
     if (!layer) return;
     const { canvas, ctx, history, redoStack } = layer;
 
@@ -497,7 +677,7 @@
   }
 
   function updateHistoryButtons() {
-    const layer = getActiveLayer();
+    const layer = LayerStore.getActive();
     if (!layer) {
       undoBtn.disabled = true;
       redoBtn.disabled = true;
@@ -509,7 +689,7 @@
 
   function bindHistory() {
     undoBtn.addEventListener("click", () => {
-      const layer = getActiveLayer();
+      const layer = LayerStore.getActive();
       if (!layer) return;
       const { ctx, history, redoStack } = layer;
       if (history.length <= 1) return;
@@ -520,7 +700,7 @@
     });
 
     redoBtn.addEventListener("click", () => {
-      const layer = getActiveLayer();
+      const layer = LayerStore.getActive();
       if (!layer) return;
       const { ctx, history, redoStack } = layer;
       if (!redoStack.length) return;
@@ -1180,6 +1360,11 @@
       }
       if (!isDrawing) return;
       isDrawing = false;
+
+      // Reset composite operation
+      const ctx = getActiveCtx();
+      if (ctx) ctx.globalCompositeOperation = "source-over";
+
       pushHistory();
     };
 
@@ -1220,16 +1405,18 @@
       removeBackground();
     });
 
-    addLayerBtn.addEventListener("click", addLayer);
+    // Add layer
+    addLayerBtn.addEventListener("click", () => {
+      LayerStore.add();
+    });
 
+    // Opacity slider
     layerOpacity.addEventListener("input", () => {
-      const active = getActiveLayer();
+      const active = LayerStore.getActive();
       if (!active) return;
       const val = +layerOpacity.value;
-      active.opacity = val / 100;
-      active.canvas.style.opacity = active.opacity;
+      LayerStore.setOpacity(active.id, val / 100);
       layerOpacityLabel.textContent = val + "%";
-      persistCanvas();
     });
 
     document.getElementById("bgZoomIn").addEventListener("click", () => {
@@ -1331,6 +1518,8 @@
         return;
       Storage.clearCanvas();
       Storage.saveSettings({});
+      // 👇 Also clear the layers key
+      localStorage.removeItem("poyberpaint:layers");
       location.reload();
     });
   }
@@ -1372,13 +1561,14 @@
       // Shift+N: new layer
       if (e.shiftKey && k === "n") {
         e.preventDefault();
-        addLayer();
+        LayerStore.add();
         return;
       }
       // Shift+D: duplicate active layer
       if (e.shiftKey && k === "d") {
         e.preventDefault();
-        duplicateLayer(activeLayerId);
+        const active = LayerStore.getActive();
+        if (active) LayerStore.duplicate(active.id);
         return;
       }
 
@@ -1457,29 +1647,14 @@
   // ---------- Persist ----------
   function persistCanvas() {
     if (!Storage.available) return;
-
-    // Serialize layers with metadata + active INDEX (not ID)
-    const layerData = layers.map((l) => ({
-      name: l.name,
-      visible: l.visible,
-      opacity: l.opacity,
-      dataURL: l.canvas.toDataURL("image/png"),
-    }));
-
-    const activeIndex = Math.max(
-      0,
-      layers.findIndex((l) => l.id === activeLayerId),
-    );
+    if (!LayerStore.layers.length) return;
 
     try {
-      localStorage.setItem(
-        "poyberpaint:layers",
-        JSON.stringify({
-          activeIndex,
-          layers: layerData,
-        }),
-      );
-      const active = getActiveLayer();
+      const data = LayerStore.serialize();
+      localStorage.setItem("poyberpaint:layers", JSON.stringify(data));
+
+      // Also keep old key for backwards compat
+      const active = LayerStore.getActive();
       if (active) {
         Storage.saveCanvas(active.canvas.toDataURL("image/png"));
       }
@@ -1540,63 +1715,8 @@
 
     if (!parsed?.layers?.length) return false;
 
-    // Clear existing layers
-    layers.forEach((l) => l.canvas.remove());
-    layers = [];
-    nextLayerId = 1;
-
-    const stackRect = layerStack.getBoundingClientRect();
-    const w = stackRect.width;
-    const h = stackRect.height;
-
-    // Recreate each layer with explicit sizing BEFORE drawing
-    const loadPromises = parsed.layers.map((meta, idx) => {
-      return new Promise((resolve) => {
-        const layer = createLayer(meta.name || `Layer ${idx + 1}`);
-
-        // Force canvas size (createLayer may not have measured yet)
-        layer.canvas.width = Math.floor(w * DPR);
-        layer.canvas.height = Math.floor(h * DPR);
-        layer.ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-        layer.ctx.lineCap = "round";
-        layer.ctx.lineJoin = "round";
-
-        // Restore metadata
-        layer.visible = meta.visible !== false;
-        layer.opacity = typeof meta.opacity === "number" ? meta.opacity : 1;
-
-        if (!layer.visible) layer.canvas.style.display = "none";
-        layer.canvas.style.opacity = layer.opacity;
-
-        if (!meta.dataURL) return resolve();
-
-        const img = new Image();
-        img.onload = () => {
-          layer.ctx.drawImage(img, 0, 0, w, h);
-          resolve();
-        };
-        img.onerror = () => resolve();
-        img.src = meta.dataURL;
-      });
-    });
-
-    await Promise.all(loadPromises);
-
-    // Restore active layer by INDEX (stable across reloads)
-    const activeIndex =
-      typeof parsed.activeIndex === "number" ? parsed.activeIndex : 0;
-    const safeIndex = Math.max(0, Math.min(activeIndex, layers.length - 1));
-    setActiveLayer(layers[safeIndex].id);
-
-    // Per-layer initial history
-    layers.forEach((layer) => {
-      layer.history = [
-        layer.ctx.getImageData(0, 0, layer.canvas.width, layer.canvas.height),
-      ];
-      layer.redoStack = [];
-    });
+    await LayerStore.deserialize(parsed);
     updateHistoryButtons();
-
     renderLayerList();
     return true;
   }
@@ -1612,25 +1732,15 @@
     bindKeyboard();
     bindResizeHandles();
 
-    // Create a default layer (will be replaced if saved data exists)
-    createLayer("Layer 1");
-    setActiveLayer(layers[0].id);
-    setupCanvas(false);
-
-    // Load saved layers (may replace the default one)
+    // Try to load saved layers
     const loaded = await loadSavedCanvas();
 
-    // If nothing loaded, initialize history
+    // If nothing loaded, create a fresh layer
     if (!loaded) {
-      layers.forEach((layer) => {
-        layer.history = [
-          layer.ctx.getImageData(0, 0, layer.canvas.width, layer.canvas.height),
-        ];
-        layer.redoStack = [];
-      });
-      updateHistoryButtons();
-      showSaved();
+      LayerStore.add("Layer 1");
     }
+
+    setupCanvas(false);
 
     // Load background image
     const bgData = Storage.loadBackground();
@@ -1644,6 +1754,7 @@
     }
 
     renderLayerList();
+    showSaved();
 
     window.addEventListener(
       "resize",
