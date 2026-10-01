@@ -68,7 +68,7 @@
   <body
     class="min-h-screen text-slate-800 dark:text-slate-200 font-sans antialiased selection:bg-accent/30"
   >
-    <!-- Header (back to normal, not sticky) -->
+    <!-- Header -->
     <header
       class="max-w-[1400px] mx-auto px-4 sm:px-6 pt-6 pb-3 flex items-center justify-between"
     >
@@ -129,7 +129,6 @@
           title="Toggle theme"
           class="relative w-9 h-9 rounded-xl grid place-items-center text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 transition"
         >
-          <!-- Sun -->
           <svg
             id="themeIconSun"
             viewBox="0 0 24 24"
@@ -145,7 +144,6 @@
               d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
             />
           </svg>
-          <!-- Moon -->
           <svg
             id="themeIconMoon"
             viewBox="0 0 24 24"
@@ -403,10 +401,13 @@
               </button>
             </div>
 
+            <!-- Import Image button with loading state -->
             <label
+              id="importLabel"
               class="mt-2 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer transition"
             >
               <svg
+                id="importIcon"
                 viewBox="0 0 24 24"
                 class="w-4 h-4"
                 fill="none"
@@ -419,7 +420,19 @@
                 <path d="M17 8l-5-5-5 5" />
                 <path d="M12 3v12" />
               </svg>
-              <span>Import Image</span>
+              <svg
+                id="importSpinner"
+                viewBox="0 0 24 24"
+                class="w-4 h-4 hidden animate-spin"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <path d="M12 2a10 10 0 0 1 10 10" />
+                <path d="M12 22a10 10 0 0 1-10-10" opacity="0.25" />
+              </svg>
+              <span id="importText">Import Image</span>
               <input
                 type="file"
                 id="bgUpload"
@@ -680,9 +693,8 @@
             <span
               id="saveIndicator"
               class="text-[11px] text-emerald-400 opacity-0 transition-opacity duration-300"
+              >✓ Saved</span
             >
-              ✓ Saved
-            </span>
           </div>
           <div
             id="canvasWrapper"
@@ -739,10 +751,10 @@
               <circle
                 id="handleBL"
                 r="7"
+                fill="#6366f1"
                 stroke="#fff"
                 stroke-width="2"
                 class="pointer-events-auto cursor-nesw-resize"
-                fill="#6366f1"
               />
               <circle
                 id="handleBR"
@@ -868,6 +880,28 @@
       </div>
     </div>
 
+    <!-- Delete Layer Modal -->
+    <div id="deleteLayerModal" class="modal-overlay">
+      <div class="modal-card">
+        <h3 class="modal-title">Delete Layer?</h3>
+        <p class="modal-desc" id="deleteLayerDesc">
+          This layer and its content will be permanently removed.
+        </p>
+        <div class="modal-actions">
+          <button
+            type="button"
+            class="btn-secondary"
+            data-modal-close="deleteLayerModal"
+          >
+            Cancel
+          </button>
+          <button type="button" id="deleteLayerConfirmBtn" class="btn-danger">
+            Delete Layer
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Help Modal -->
     <div id="helpModal" class="modal-overlay">
       <div class="modal-card modal-card-lg">
@@ -897,7 +931,6 @@
           </button>
         </div>
 
-        <!-- Tip -->
         <div class="help-tip">
           <svg
             viewBox="0 0 24 24"
@@ -918,7 +951,6 @@
           </p>
         </div>
 
-        <!-- Shortcuts grid -->
         <h4 class="help-section-title">Tools</h4>
         <div class="help-grid">
           <div class="help-row"><kbd class="kbd">B</kbd><span>Brush</span></div>

@@ -152,7 +152,7 @@ html.dark .section-title {
   flex-shrink: 0;
 }
 
-/* ===== kbd hint badge (on tool buttons) ===== */
+/* ===== kbd hint badge ===== */
 .kbd-hint {
   position: absolute;
   top: 3px;
@@ -276,7 +276,6 @@ body.tool-move-bg canvas:active {
   cursor: grabbing;
 }
 
-/* Prevent browser gestures on canvas */
 #bgLayer {
   user-select: none;
   -webkit-user-drag: none;
@@ -810,4 +809,21 @@ html:not(.dark) .toast {
   .toast {
     max-width: none;
   }
+}
+
+/* ═══════════════════════════════════════════════ */
+/*  IMPORT BUTTON — LOADING STATE                   */
+/* ═══════════════════════════════════════════════ */
+#importLabel.is-loading {
+  cursor: wait;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+#importLabel.is-loading #importIcon {
+  display: none;
+}
+
+#importLabel.is-loading #importSpinner {
+  display: block;
 }

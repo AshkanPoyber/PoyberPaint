@@ -1,7 +1,7 @@
 /**
  * PoyberPaint — A Modern Paint & Drawing Web App.
  * @author AshkanPoyber
- * @version 2.1.0 (Polished UI)
+ * @version 2.2.0
  */
 
 (() => {
@@ -21,6 +21,8 @@
   const helpToggle = document.getElementById("helpToggle");
   const canvasWrapper = document.getElementById("canvasWrapper");
   const bgUpload = document.getElementById("bgUpload");
+  const importLabel = document.getElementById("importLabel");
+  const importText = document.getElementById("importText");
   const clearBgBtn = document.getElementById("clearBg");
   const bgLayer = document.getElementById("bgLayer");
   const bgControls = document.getElementById("bgControls");
@@ -87,6 +89,9 @@
   let isRotatingBg = false;
   let rotateStart = { angle: 0, rotation: 0, centerX: 0, centerY: 0 };
   let resizeStart = { x: 0, y: 0, scale: 1, centerX: 0, centerY: 0 };
+
+  // Pending delete layer id (for modal confirm)
+  let pendingDeleteLayerId = null;
 
   // ═══════════════════════════════════════════════════════
   //  LAYER STORE
@@ -304,7 +309,6 @@
         }
 
         layer.history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
-
         this.layers.push(layer);
       }
 
@@ -319,7 +323,6 @@
     },
   };
 
-  // ---------- Layer helpers ----------
   function getActiveLayer() {
     return LayerStore.getActive();
   }
@@ -349,6 +352,13 @@
     const settings = Storage.loadSettings() || {};
     settings.theme = next;
     Storage.saveSettings(settings);
+
+    // Toast on theme switch
+    if (next === "dark") {
+      showToast("Dark mode activated", "info");
+    } else {
+      showToast("Light mode activated", "info");
+    }
   }
 
   // ═══════════════════════════════════════════════════════
@@ -379,8 +389,6 @@
     const modal = document.getElementById(id);
     if (!modal) return;
     modal.classList.add("open");
-
-    // Auto-focus first input inside modal
     const input = modal.querySelector("input");
     if (input) setTimeout(() => input.focus(), 100);
   }
@@ -392,21 +400,18 @@
   }
 
   function bindModals() {
-    // Close buttons
     document.querySelectorAll("[data-modal-close]").forEach((btn) => {
       btn.addEventListener("click", () => {
         closeModal(btn.dataset.modalClose);
       });
     });
 
-    // Click on overlay (outside modal-card) closes
     document.querySelectorAll(".modal-overlay").forEach((overlay) => {
       overlay.addEventListener("click", (e) => {
         if (e.target === overlay) overlay.classList.remove("open");
       });
     });
 
-    // Escape closes any open modal
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         document.querySelectorAll(".modal-overlay.open").forEach((m) => {
@@ -458,12 +463,19 @@
       delBtn.innerHTML = `<svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg>`;
       delBtn.addEventListener("click", (e) => {
         e.stopPropagation();
+
         if (LayerStore.layers.length <= 1) {
           showToast("You need at least one layer", "error");
           return;
         }
-        if (!confirm(`Delete "${layer.name}"?`)) return;
-        LayerStore.remove(layer.id);
+
+        // Open delete confirm modal
+        pendingDeleteLayerId = layer.id;
+        const desc = document.getElementById("deleteLayerDesc");
+        if (desc) {
+          desc.textContent = `"${layer.name}" and its content will be permanently removed.`;
+        }
+        openModal("deleteLayerModal");
       });
 
       item.appendChild(eyeBtn);
@@ -621,7 +633,6 @@
           "tool-move-bg",
           selectedTool === "move-bg",
         );
-
         updateBgOverlay();
         persistSettings();
       }),
@@ -709,8 +720,8 @@
   function drawRect(x, y) {
     const ctx = getActiveCtx();
     if (!ctx) return;
-    const w = startX - x;
-    const h = startY - y;
+    const w = startX - x,
+      h = startY - y;
     ctx.beginPath();
     if (fillColor.checked) {
       ctx.fillRect(
@@ -909,12 +920,11 @@
   function hexToRgba(hex) {
     if (!hex) return null;
     hex = hex.replace("#", "").trim();
-    if (hex.length === 3) {
+    if (hex.length === 3)
       hex = hex
         .split("")
         .map((c) => c + c)
         .join("");
-    }
     if (hex.length !== 6) return null;
     const r = parseInt(hex.slice(0, 2), 16);
     const g = parseInt(hex.slice(2, 4), 16);
@@ -926,12 +936,27 @@
     return a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
   }
 
-  // ---------- Background Image ----------
+  // ═══════════════════════════════════════════════════════
+  //  BACKGROUND IMAGE (with loading state)
+  // ═══════════════════════════════════════════════════════
+  function setImportLoading(isLoading) {
+    if (!importLabel) return;
+    if (isLoading) {
+      importLabel.classList.add("is-loading");
+      if (importText) importText.textContent = "Importing image…";
+    } else {
+      importLabel.classList.remove("is-loading");
+      if (importText) importText.textContent = "Import Image";
+    }
+  }
+
   function handleBackgroundUpload(file) {
     if (!file || !file.type.startsWith("image/")) {
       showToast("Please choose an image file", "error");
       return;
     }
+
+    setImportLoading(true);
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -949,8 +974,19 @@
         clearBgBtn.classList.remove("hidden");
         bgControls.classList.remove("hidden");
         setTimeout(updateBgOverlay, 50);
+
+        setImportLoading(false);
+        showToast("Image imported successfully", "success");
+      };
+      img.onerror = () => {
+        setImportLoading(false);
+        showToast("Failed to load image", "error");
       };
       img.src = e.target.result;
+    };
+    reader.onerror = () => {
+      setImportLoading(false);
+      showToast("Failed to read file", "error");
     };
     reader.readAsDataURL(file);
   }
@@ -1347,9 +1383,7 @@
     layerStack.addEventListener("pointerleave", endDraw);
   }
 
-  // ═══════════════════════════════════════════════════════
-  //  SAVE AS IMAGE (with modal + toast)
-  // ═══════════════════════════════════════════════════════
+  // ---------- Save Image ----------
   function buildExportCanvas() {
     const activeCanvas = getActiveCanvas();
     if (!activeCanvas) return null;
@@ -1365,29 +1399,30 @@
     exCtx.fillStyle = "#ffffff";
     exCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
 
-    if (backgroundDataURL) {
-      // Synchronous draw can't wait for image load — but bgLayer is already loaded
-      // Use the loaded bgLayer image directly
-      if (bgLayer && bgLayer.complete && bgLayer.naturalWidth) {
-        const iw = bgLayer.naturalWidth;
-        const ih = bgLayer.naturalHeight;
-        const fitScale = Math.min(rect.width / iw, rect.height / ih) * dpr;
+    if (
+      backgroundDataURL &&
+      bgLayer &&
+      bgLayer.complete &&
+      bgLayer.naturalWidth
+    ) {
+      const iw = bgLayer.naturalWidth;
+      const ih = bgLayer.naturalHeight;
+      const fitScale = Math.min(rect.width / iw, rect.height / ih) * dpr;
 
-        const dw =
-          iw * fitScale * bgTransform.scale * Math.abs(bgTransform.flipH);
-        const dh =
-          ih * fitScale * bgTransform.scale * Math.abs(bgTransform.flipV);
+      const dw =
+        iw * fitScale * bgTransform.scale * Math.abs(bgTransform.flipH);
+      const dh =
+        ih * fitScale * bgTransform.scale * Math.abs(bgTransform.flipV);
 
-        const cx = exportCanvas.width / 2 + bgTransform.x * dpr;
-        const cy = exportCanvas.height / 2 + bgTransform.y * dpr;
+      const cx = exportCanvas.width / 2 + bgTransform.x * dpr;
+      const cy = exportCanvas.height / 2 + bgTransform.y * dpr;
 
-        exCtx.save();
-        exCtx.translate(cx, cy);
-        exCtx.rotate((bgTransform.rotation * Math.PI) / 180);
-        exCtx.scale(bgTransform.flipH, bgTransform.flipV);
-        exCtx.drawImage(bgLayer, -dw / 2, -dh / 2, dw, dh);
-        exCtx.restore();
-      }
+      exCtx.save();
+      exCtx.translate(cx, cy);
+      exCtx.rotate((bgTransform.rotation * Math.PI) / 180);
+      exCtx.scale(bgTransform.flipH, bgTransform.flipV);
+      exCtx.drawImage(bgLayer, -dw / 2, -dh / 2, dw, dh);
+      exCtx.restore();
     }
 
     LayerStore.layers.forEach((layer) => {
@@ -1442,9 +1477,7 @@
     }
   }
 
-  // ═══════════════════════════════════════════════════════
-  //  RESET (with modal)
-  // ═══════════════════════════════════════════════════════
+  // ---------- Reset ----------
   function openResetModal() {
     openModal("resetModal");
   }
@@ -1460,6 +1493,20 @@
     setTimeout(() => location.reload(), 700);
   }
 
+  // ---------- Delete Layer ----------
+  function confirmDeleteLayer() {
+    if (!pendingDeleteLayerId) return;
+    const layerId = pendingDeleteLayerId;
+    pendingDeleteLayerId = null;
+
+    const layer = LayerStore.getById(layerId);
+    const layerName = layer ? layer.name : "Layer";
+
+    LayerStore.remove(layerId);
+    closeModal("deleteLayerModal");
+    showToast(`"${layerName}" deleted`, "info");
+  }
+
   // ---------- Actions ----------
   function bindActions() {
     themeToggle?.addEventListener("click", toggleTheme);
@@ -1468,6 +1515,7 @@
     document.getElementById("clear").addEventListener("click", () => {
       clearActiveLayer();
       pushHistory();
+      showToast("Canvas cleared", "info");
     });
 
     bgFlipHBtn.addEventListener("click", () => {
@@ -1490,13 +1538,13 @@
 
     clearBgBtn.addEventListener("click", () => {
       if (!backgroundDataURL) return;
-      if (!confirm("Remove the imported image?")) return;
       removeBackground();
       showToast("Background image removed", "info");
     });
 
     addLayerBtn.addEventListener("click", () => {
-      LayerStore.add();
+      const layer = LayerStore.add();
+      showToast(`"${layer.name}" added`, "success");
     });
 
     layerOpacity.addEventListener("input", () => {
@@ -1530,15 +1578,10 @@
       { passive: false },
     );
 
-    // Save button → opens modal
     document.getElementById("save").addEventListener("click", openSaveModal);
-
-    // Save modal confirm
     document
       .getElementById("saveConfirmBtn")
       .addEventListener("click", confirmSave);
-
-    // Save modal: Enter in input triggers save
     document
       .getElementById("saveNameInput")
       .addEventListener("keydown", (e) => {
@@ -1548,13 +1591,15 @@
         }
       });
 
-    // Reset button → opens modal
     document.getElementById("reset").addEventListener("click", openResetModal);
-
-    // Reset modal confirm
     document
       .getElementById("resetConfirmBtn")
       .addEventListener("click", confirmReset);
+
+    // Delete layer confirm
+    document
+      .getElementById("deleteLayerConfirmBtn")
+      .addEventListener("click", confirmDeleteLayer);
   }
 
   // ---------- Keyboard ----------
@@ -1569,7 +1614,6 @@
         return;
       }
 
-      // Don't handle shortcuts when a modal is open
       if (document.querySelector(".modal-overlay.open")) return;
 
       const k = e.key.toLowerCase();
@@ -1596,13 +1640,17 @@
 
       if (e.shiftKey && k === "n") {
         e.preventDefault();
-        LayerStore.add();
+        const layer = LayerStore.add();
+        showToast(`"${layer.name}" added`, "success");
         return;
       }
       if (e.shiftKey && k === "d") {
         e.preventDefault();
         const active = LayerStore.getActive();
-        if (active) LayerStore.duplicate(active.id);
+        if (active) {
+          const dup = LayerStore.duplicate(active.id);
+          if (dup) showToast(`Duplicated as "${dup.name}"`, "success");
+        }
         return;
       }
 
