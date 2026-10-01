@@ -26,61 +26,45 @@ Draw. Sketch. Create.
 
 ## ✨ Features
 
-<table>
-<tr>
-<td width="50%">
-
 ### 🎨 Drawing Tools
 
 - 🖌️ **Brush** — smooth freehand drawing
-- 🧽 **Eraser** — true transparency with destination-out
+- 🧽 **Eraser** — true transparency with `destination-out`
 - ✍️ **Text** — click, type, and place text anywhere
 - 📏 **Line** — draw straight lines
 - ➡️ **Arrow** — with dynamic arrowhead geometry
 - 🔷 **Shapes** — rectangle, circle, triangle
-- 🪣 **Flood Fill** — BFS-based bucket tool
-
-</td>
-<td width="50%">
+- 🪣 **Flood Fill** — BFS-based bucket tool with anti-alias tolerance
 
 ### 🗂️ Layers
 
 - 🎨 **Multi-layer support** — add, delete, duplicate, rename
-- 👁️ **Visibility toggle** — hide/show individual layers
-- 🎚️ **Opacity slider** — per-layer transparency
-- 🔄 **Active layer switching** — click to select
-- 💾 **Full persistence** — all layers survive reloads
-
-</td>
-<td width="50%">
+- 👁️ **Visibility toggle** — hide or show individual layers
+- 🎚️ **Opacity slider** — per-layer transparency control
+- 🔄 **Active layer switching** — click any layer to make it active
+- 💾 **Full persistence** — every layer survives page reloads
 
 ### 🖼️ Image Layer
 
-- 📤 **Import** — load JPG, PNG, WebP, GIF (auto-compressed)
+- 📤 **Import** — load JPG, PNG, WebP, or GIF (auto-compressed)
 - 🖐️ **Pan** — drag to reposition
-- 🔍 **Zoom** — mouse wheel or buttons
+- 🔍 **Zoom** — mouse wheel or zoom buttons
 - 📐 **Resize** — drag any corner handle
-- 🔄 **Rotate** — drag the top handle (Shift to snap)
+- 🔄 **Rotate** — drag the top handle (hold `Shift` to snap)
 - ↔️ **Flip** — horizontal and vertical
-- 🎯 **Snap to center**
+- 🎯 **Snap to center** — with visual feedback
 - 💾 **Persisted** — transform survives reloads
-
-</td>
-<td width="50%">
 
 ### ⚡ Experience
 
 - ↩️ **Undo / Redo** — per-layer, with `Ctrl+Z` / `Ctrl+Y`
 - 💾 **Export PNG** — merges all visible layers, `Ctrl+S`
-- 🌗 **Light / Dark theme** — auto-saved
-- 📱 **Fully responsive**
-- 🖱️ **Pointer Events** — mouse, touch, stylus
-- 🖥️ **Retina-ready**
+- 🌗 **Light / Dark theme** — auto-saved and switchable
+- 📱 **Fully responsive** — desktop, tablet, mobile
+- 🖱️ **Pointer Events** — mouse, touch, and stylus
+- 🖥️ **Retina-ready** — crisp output on high-DPI screens
 - ⌨️ **Keyboard shortcuts** — tools, colors, sizes, layers
-
-</td>
-</tr>
-</table>
+- 🔔 **Toasts & modals** — clean, modern feedback for every action
 
 ---
 
@@ -90,15 +74,16 @@ Draw. Sketch. Create.
 
 <img src="assets/demo.gif" alt="PoyberPaint Demo" width="80%" style="border-radius: 12px;" />
 
-</div>
+<br />
+<br />
 
 👉 **[Try it live →](https://ashkanpoyber.github.io/PoyberPaint/)**
+
+</div>
 
 ---
 
 ## 🛠️ Tech Stack
-
-<div align="center">
 
 |     Layer     | Choice                         |
 | :-----------: | :----------------------------- |
@@ -107,11 +92,9 @@ Draw. Sketch. Create.
 |   **Logic**   | Vanilla JavaScript (ES6+)      |
 | **Rendering** | HTML5 Canvas API               |
 |   **Icons**   | Inline SVG                     |
-|   **Font**    | Inter + JetBrains Mono         |
+|   **Fonts**   | Inter + JetBrains Mono         |
 |  **Storage**  | LocalStorage                   |
 |  **Hosting**  | GitHub Pages                   |
-
-</div>
 
 ---
 
@@ -125,77 +108,88 @@ Building PoyberPaint helped me practice:
 - 🖥️ **DPR-aware rendering** — crisp output on retina displays using `devicePixelRatio`
 - 📐 **Vector math** — arrowhead geometry via `Math.atan2` and trigonometry
 - ✍️ **Hybrid DOM + Canvas** — floating `<input>` for text, committed to canvas
-- 🗂️ **State management** — undo/redo stack with bounded history, no framework
-- 💽 **Persistence** — canvas + settings via `LocalStorage` with graceful fallbacks
+- 🗂️ **Multi-layer architecture** — independent canvases with per-layer state and history
+- 💽 **Persistence** — canvas, layers, and settings via `LocalStorage` with graceful fallbacks
 - ⏱️ **Debouncing** — smooth canvas resize handling
 - 🧩 **Modular architecture** — clean separation of concerns in vanilla JS
 - 🌗 **Theming** — dark/light toggle with FOUC prevention
 - 🖼️ **Image manipulation** — pan, zoom, resize, and rotate with SVG overlay handles
 - 📐 **Transform math** — combining translate, scale, and rotate with correct bounds
 - 🎯 **Hit detection** — SVG pointer events on rotated bounding boxes
+- ✨ **UX polish** — toasts, modals, loading states, and custom scrollbars
 
 ---
 
 ## ⌨️ Keyboard Shortcuts
 
-<div align="center">
-
-|  Shortcut  | Action      |
-| :--------: | :---------- |
-| `Ctrl + Z` | Undo        |
-| `Ctrl + Y` | Redo        |
-| `Ctrl + S` | Save as PNG |
-
-</div>
+| Shortcut    | Action             |
+| :---------- | :----------------- |
+| `B`         | Brush              |
+| `E`         | Eraser             |
+| `T`         | Text               |
+| `R`         | Rectangle          |
+| `C`         | Circle             |
+| `L`         | Line               |
+| `A`         | Arrow              |
+| `F`         | Fill               |
+| `M`         | Move Background    |
+| `1` – `9`   | Pick palette color |
+| `[` / `]`   | Brush size down/up |
+| `0`         | Reset background   |
+| `Shift + N` | New layer          |
+| `Shift + D` | Duplicate layer    |
+| `Esc`       | Close / cancel     |
+| `Ctrl + Z`  | Undo               |
+| `Ctrl + Y`  | Redo               |
+| `Ctrl + S`  | Save as PNG        |
 
 ---
 
 ## 📦 Getting Started
 
-### Option 1: Just open it
+### Option 1 — Just open it
 
 ```bash
 git clone https://github.com/ashkanpoyber/PoyberPaint.git
 cd PoyberPaint
 ```
 
-Then open `index.html` in your browser — no build step needed.
+Then open `index.html` in your browser. No build step, no dependencies.
 
-### Option 2: Local server
+### Option 2 — Local server
 
-`npx serve .`
+```bash
+npx serve .
+# or
+python -m http.server 8000
+```
 
-or
+Then visit `http://localhost:8000`.
 
-`python -m http.server 8000`
+---
 
 ## 📂 Project Structure
 
+```
 PoyberPaint/
-
-├── index.html # Main app
-
+├── index.html          # Main app markup
 ├── css/
-
-│ └── style.css # Custom styles
-
+│   └── style.css       # Custom styles + modals + toasts
 ├── js/
-
-│ ├── storage.js # LocalStorage module
-
-│ └── app.js # Main logic
-
+│   ├── storage.js      # LocalStorage wrapper
+│   └── app.js          # Main logic (layers, tools, drawing)
 ├── assets/
-
-│ ├── favicon.svg
-
-│ ├── preview.png
-
-│ └── demo.gif
-
+│   ├── favicon.svg
+│   ├── preview.png
+│   └── demo.gif
+├── CONTRIBUTING.md
+├── CODE_OF_CONDUCT.md
+├── CHANGELOG.md
 ├── LICENSE
-
 └── README.md
+```
+
+---
 
 ## 🗺️ Roadmap
 
@@ -209,33 +203,44 @@ PoyberPaint/
 - [x] Light / dark theme toggle
 - [x] LocalStorage persistence
 - [x] Image import with pan, zoom, resize, rotate
-- [x] **Layer system**
+- [x] Layer system
+- [x] Modals & toasts for better UX
 - [ ] Export to SVG
 - [ ] Custom canvas size
 - [ ] Gradient tool
 - [ ] Background removal
 
+---
+
 ## 🤝 Contributing
 
 Contributions, issues, and feature requests are welcome!
-Feel free to check the [issues page](https://github.com/ashkanpoyber/PoyberPaint/issues).
+
+Please check the [CONTRIBUTING](./CONTRIBUTING.md) guide before opening a PR, and feel free to open an [issue](https://github.com/ashkanpoyber/PoyberPaint/issues) for any bug or idea.
 
 If you like this project, please consider giving it a ⭐
 
+---
+
 ## 📄 License
 
-This project is licensed under the MIT License — see the [LICENSE](https://./LICENSE) file for details.
+This project is licensed under the **MIT License** — see the [LICENSE](./LICENSE) file for details.
 
-## 👤 Author
+---
 
 <div align="center">
 
-MohammadReza Dalili (AshkanPoyber)
+## 👤 Author
 
-</div><div align="center">
+**MohammadReza Dalili (AshkanPoyber)**
 
-⭐ If you like this project, give it a star! ⭐
+[![GitHub](https://img.shields.io/badge/GitHub-ashkanpoyber-181717?style=flat-square&logo=github)](https://github.com/ashkanpoyber)
+[![Portfolio](https://img.shields.io/badge/Portfolio-ashkanpoyber.github.io-6366f1?style=flat-square&logo=googlechrome&logoColor=white)](https://ashkanpoyber.github.io)
 
-Made with ❤️ by AshkanPoyber
+<br />
+
+⭐ **If you like this project, give it a star!** ⭐
+
+Made with ❤️ by **AshkanPoyber**
 
 </div>
