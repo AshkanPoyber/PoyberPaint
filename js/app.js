@@ -1,7 +1,7 @@
 /**
  * PoyberPaint — A Modern Paint & Drawing Web App.
  * @author AshkanPoyber
- * @version 2.0.0 (Layer System)
+ * @version 2.1.0 (Polished UI)
  */
 
 (() => {
@@ -18,6 +18,7 @@
   const redoBtn = document.getElementById("redo");
   const saveIndicator = document.getElementById("saveIndicator");
   const themeToggle = document.getElementById("themeToggle");
+  const helpToggle = document.getElementById("helpToggle");
   const canvasWrapper = document.getElementById("canvasWrapper");
   const bgUpload = document.getElementById("bgUpload");
   const clearBgBtn = document.getElementById("clearBg");
@@ -37,6 +38,7 @@
   const addLayerBtn = document.getElementById("addLayerBtn");
   const layerOpacity = document.getElementById("layerOpacity");
   const layerOpacityLabel = document.getElementById("layerOpacityLabel");
+  const toastContainer = document.getElementById("toastContainer");
 
   // ---------- Constants ----------
   const PALETTE = [
@@ -87,14 +89,13 @@
   let resizeStart = { x: 0, y: 0, scale: 1, centerX: 0, centerY: 0 };
 
   // ═══════════════════════════════════════════════════════
-  //  LAYER STORE — Single Source of Truth
+  //  LAYER STORE
   // ═══════════════════════════════════════════════════════
   const LayerStore = {
     layers: [],
     activeLayerId: null,
     nextId: 1,
 
-    // ─── Queries ─────────────────────────────────
     getActive() {
       return this.layers.find((l) => l.id === this.activeLayerId);
     },
@@ -105,7 +106,6 @@
       return this.layers.findIndex((l) => l.id === this.activeLayerId);
     },
 
-    // ─── Internal side effects ──────────────────
     _render() {
       renderLayerList();
     },
@@ -118,7 +118,6 @@
       updateHistoryButtons();
     },
 
-    // ─── Mutations ───────────────────────────────
     add(name) {
       const id = `layer-${this.nextId++}`;
       const canvas = document.createElement("canvas");
@@ -352,7 +351,74 @@
     Storage.saveSettings(settings);
   }
 
-  // ---------- Layer Panel UI ----------
+  // ═══════════════════════════════════════════════════════
+  //  TOASTS
+  // ═══════════════════════════════════════════════════════
+  function showToast(message, type = "info", duration = 3000) {
+    const icons = {
+      success: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="toast-icon"><path d="M20 6L9 17l-5-5"/></svg>`,
+      error: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="toast-icon"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>`,
+      info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="toast-icon"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>`,
+    };
+
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `${icons[type] || icons.info}<span>${message}</span>`;
+    toastContainer.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add("toast-out");
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  MODALS
+  // ═══════════════════════════════════════════════════════
+  function openModal(id) {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.classList.add("open");
+
+    // Auto-focus first input inside modal
+    const input = modal.querySelector("input");
+    if (input) setTimeout(() => input.focus(), 100);
+  }
+
+  function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.classList.remove("open");
+  }
+
+  function bindModals() {
+    // Close buttons
+    document.querySelectorAll("[data-modal-close]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        closeModal(btn.dataset.modalClose);
+      });
+    });
+
+    // Click on overlay (outside modal-card) closes
+    document.querySelectorAll(".modal-overlay").forEach((overlay) => {
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.classList.remove("open");
+      });
+    });
+
+    // Escape closes any open modal
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        document.querySelectorAll(".modal-overlay.open").forEach((m) => {
+          m.classList.remove("open");
+        });
+      }
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  LAYER PANEL UI
+  // ═══════════════════════════════════════════════════════
   function renderLayerList() {
     if (layerList.querySelector(".layer-name-input")) return;
 
@@ -364,7 +430,6 @@
         "layer-item" + (layer.id === LayerStore.activeLayerId ? " active" : "");
       item.dataset.layerId = layer.id;
 
-      // Eye button
       const eyeBtn = document.createElement("button");
       eyeBtn.type = "button";
       eyeBtn.className = "layer-btn" + (layer.visible ? "" : " eye-off");
@@ -377,7 +442,6 @@
         LayerStore.toggleVisible(layer.id);
       });
 
-      // Name
       const nameEl = document.createElement("span");
       nameEl.className = "layer-name";
       nameEl.textContent = layer.name;
@@ -387,7 +451,6 @@
         startRenameLayer(layer.id, nameEl);
       });
 
-      // Delete (with new class for hover-only reveal)
       const delBtn = document.createElement("button");
       delBtn.type = "button";
       delBtn.className = "layer-btn layer-delete-btn";
@@ -396,7 +459,7 @@
       delBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         if (LayerStore.layers.length <= 1) {
-          alert("You need at least one layer.");
+          showToast("You need at least one layer", "error");
           return;
         }
         if (!confirm(`Delete "${layer.name}"?`)) return;
@@ -424,8 +487,6 @@
   function startRenameLayer(layerId, nameEl) {
     const layer = LayerStore.getById(layerId);
     if (!layer) return;
-
-    // Only one input at a time
     if (layerList.querySelector(".layer-name-input")) return;
 
     const input = document.createElement("input");
@@ -442,16 +503,12 @@
     const finish = (save) => {
       if (committed) return;
       committed = true;
-
-      // Remove input from DOM FIRST so renderLayerList can run
       if (input.parentNode) input.parentNode.removeChild(input);
-
       if (save) {
         const newName = input.value.trim() || layer.name;
         layer.name = newName;
         persistCanvas();
       }
-
       renderLayerList();
     };
 
@@ -480,12 +537,8 @@
     const newW = Math.floor(stackRect.width * DPR);
     const newH = Math.floor(stackRect.height * DPR);
 
-    // Skip if size hasn't changed
-    if (canvas.width === newW && canvas.height === newH) {
-      return;
-    }
+    if (canvas.width === newW && canvas.height === newH) return;
 
-    // Snapshot current content via a temp canvas
     let temp = null;
     if (preserveContent && canvas.width && canvas.height) {
       temp = document.createElement("canvas");
@@ -494,14 +547,12 @@
       temp.getContext("2d").drawImage(canvas, 0, 0);
     }
 
-    // Resize
     canvas.width = newW;
     canvas.height = newH;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    // Redraw old content scaled to fit
     if (temp) {
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -771,9 +822,7 @@
     });
 
     input.addEventListener("blur", () => {
-      if (input.value.trim()) {
-        commitText(x, y, input.value);
-      }
+      if (input.value.trim()) commitText(x, y, input.value);
       closeTextInput();
     });
   }
@@ -818,7 +867,6 @@
 
     const idx = (y * W + x) * 4;
     const startColor = [data[idx], data[idx + 1], data[idx + 2], data[idx + 3]];
-
     if (colorsEqual(startColor, target)) return;
 
     const stack = [[x, y]];
@@ -881,7 +929,7 @@
   // ---------- Background Image ----------
   function handleBackgroundUpload(file) {
     if (!file || !file.type.startsWith("image/")) {
-      alert("Please choose an image file.");
+      showToast("Please choose an image file", "error");
       return;
     }
 
@@ -895,9 +943,7 @@
 
         const ok = Storage.saveBackground(compressed);
         if (!ok) {
-          alert(
-            "Image is too large to save. It will still work for this session.",
-          );
+          showToast("Image too large to save for next session", "error");
         }
 
         clearBgBtn.classList.remove("hidden");
@@ -942,7 +988,7 @@
     updateBgOverlay();
   }
 
-  // ---------- Overlay (Resize / Rotate) ----------
+  // ---------- Overlay ----------
   function updateBgOverlay() {
     if (selectedTool !== "move-bg" || !backgroundDataURL) {
       bgOverlay.classList.add("hidden");
@@ -1301,9 +1347,124 @@
     layerStack.addEventListener("pointerleave", endDraw);
   }
 
+  // ═══════════════════════════════════════════════════════
+  //  SAVE AS IMAGE (with modal + toast)
+  // ═══════════════════════════════════════════════════════
+  function buildExportCanvas() {
+    const activeCanvas = getActiveCanvas();
+    if (!activeCanvas) return null;
+
+    const rect = activeCanvas.getBoundingClientRect();
+    const dpr = activeCanvas.width / rect.width;
+
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = activeCanvas.width;
+    exportCanvas.height = activeCanvas.height;
+    const exCtx = exportCanvas.getContext("2d");
+
+    exCtx.fillStyle = "#ffffff";
+    exCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+    if (backgroundDataURL) {
+      // Synchronous draw can't wait for image load — but bgLayer is already loaded
+      // Use the loaded bgLayer image directly
+      if (bgLayer && bgLayer.complete && bgLayer.naturalWidth) {
+        const iw = bgLayer.naturalWidth;
+        const ih = bgLayer.naturalHeight;
+        const fitScale = Math.min(rect.width / iw, rect.height / ih) * dpr;
+
+        const dw =
+          iw * fitScale * bgTransform.scale * Math.abs(bgTransform.flipH);
+        const dh =
+          ih * fitScale * bgTransform.scale * Math.abs(bgTransform.flipV);
+
+        const cx = exportCanvas.width / 2 + bgTransform.x * dpr;
+        const cy = exportCanvas.height / 2 + bgTransform.y * dpr;
+
+        exCtx.save();
+        exCtx.translate(cx, cy);
+        exCtx.rotate((bgTransform.rotation * Math.PI) / 180);
+        exCtx.scale(bgTransform.flipH, bgTransform.flipV);
+        exCtx.drawImage(bgLayer, -dw / 2, -dh / 2, dw, dh);
+        exCtx.restore();
+      }
+    }
+
+    LayerStore.layers.forEach((layer) => {
+      if (!layer.visible) return;
+      exCtx.globalAlpha = layer.opacity;
+      exCtx.drawImage(layer.canvas, 0, 0);
+    });
+    exCtx.globalAlpha = 1;
+
+    return exportCanvas;
+  }
+
+  function openSaveModal() {
+    const input = document.getElementById("saveNameInput");
+    const today = new Date();
+    const defaultName = `poyberpaint-${today.toISOString().slice(0, 10)}`;
+    input.value = defaultName;
+    openModal("saveModal");
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 120);
+  }
+
+  function confirmSave() {
+    const input = document.getElementById("saveNameInput");
+    const rawName = (input.value || "").trim();
+    const safeName =
+      (rawName || "poyberpaint")
+        .replace(/[^a-z0-9\-_\.]/gi, "-")
+        .slice(0, 60) || "poyberpaint";
+
+    const exportCanvas = buildExportCanvas();
+    if (!exportCanvas) {
+      showToast("Nothing to save yet", "error");
+      closeModal("saveModal");
+      return;
+    }
+
+    try {
+      const link = document.createElement("a");
+      link.download = `${safeName}.png`;
+      link.href = exportCanvas.toDataURL("image/png");
+      link.click();
+
+      closeModal("saveModal");
+      showToast(`Saved as "${safeName}.png"`, "success");
+    } catch (e) {
+      console.error(e);
+      closeModal("saveModal");
+      showToast("Failed to save image", "error");
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  RESET (with modal)
+  // ═══════════════════════════════════════════════════════
+  function openResetModal() {
+    openModal("resetModal");
+  }
+
+  function confirmReset() {
+    Storage.clearCanvas();
+    Storage.saveSettings({});
+    Storage.clearBackground();
+    Storage.clearBgTransform();
+    localStorage.removeItem("poyberpaint:layers");
+    closeModal("resetModal");
+    showToast("Everything reset. Reloading…", "info", 1200);
+    setTimeout(() => location.reload(), 700);
+  }
+
   // ---------- Actions ----------
   function bindActions() {
     themeToggle?.addEventListener("click", toggleTheme);
+    helpToggle?.addEventListener("click", () => openModal("helpModal"));
+
     document.getElementById("clear").addEventListener("click", () => {
       clearActiveLayer();
       pushHistory();
@@ -1331,6 +1492,7 @@
       if (!backgroundDataURL) return;
       if (!confirm("Remove the imported image?")) return;
       removeBackground();
+      showToast("Background image removed", "info");
     });
 
     addLayerBtn.addEventListener("click", () => {
@@ -1368,74 +1530,31 @@
       { passive: false },
     );
 
-    document.getElementById("save").addEventListener("click", () => {
-      const activeCanvas = getActiveCanvas();
-      if (!activeCanvas) return;
-      const rect = activeCanvas.getBoundingClientRect();
-      const dpr = activeCanvas.width / rect.width;
+    // Save button → opens modal
+    document.getElementById("save").addEventListener("click", openSaveModal);
 
-      const exportCanvas = document.createElement("canvas");
-      exportCanvas.width = activeCanvas.width;
-      exportCanvas.height = activeCanvas.height;
-      const exCtx = exportCanvas.getContext("2d");
+    // Save modal confirm
+    document
+      .getElementById("saveConfirmBtn")
+      .addEventListener("click", confirmSave);
 
-      exCtx.fillStyle = "#ffffff";
-      exCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+    // Save modal: Enter in input triggers save
+    document
+      .getElementById("saveNameInput")
+      .addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          confirmSave();
+        }
+      });
 
-      const finishExport = () => {
-        LayerStore.layers.forEach((layer) => {
-          if (!layer.visible) return;
-          exCtx.globalAlpha = layer.opacity;
-          exCtx.drawImage(layer.canvas, 0, 0);
-        });
-        exCtx.globalAlpha = 1;
+    // Reset button → opens modal
+    document.getElementById("reset").addEventListener("click", openResetModal);
 
-        const link = document.createElement("a");
-        link.download = `poyberpaint-${Date.now()}.png`;
-        link.href = exportCanvas.toDataURL("image/png");
-        link.click();
-      };
-
-      if (backgroundDataURL) {
-        const img = new Image();
-        img.onload = () => {
-          const iw = img.naturalWidth;
-          const ih = img.naturalHeight;
-          const fitScale = Math.min(rect.width / iw, rect.height / ih) * dpr;
-
-          const dw =
-            iw * fitScale * bgTransform.scale * Math.abs(bgTransform.flipH);
-          const dh =
-            ih * fitScale * bgTransform.scale * Math.abs(bgTransform.flipV);
-
-          const cx = exportCanvas.width / 2 + bgTransform.x * dpr;
-          const cy = exportCanvas.height / 2 + bgTransform.y * dpr;
-
-          exCtx.save();
-          exCtx.translate(cx, cy);
-          exCtx.rotate((bgTransform.rotation * Math.PI) / 180);
-          exCtx.scale(bgTransform.flipH, bgTransform.flipV);
-          exCtx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
-          exCtx.restore();
-
-          finishExport();
-        };
-        img.src = backgroundDataURL;
-      } else {
-        finishExport();
-      }
-    });
-
-    document.getElementById("reset").addEventListener("click", () => {
-      if (
-        !confirm("This will clear your saved drawing and settings. Continue?")
-      )
-        return;
-      Storage.clearCanvas();
-      Storage.saveSettings({});
-      localStorage.removeItem("poyberpaint:layers");
-      location.reload();
-    });
+    // Reset modal confirm
+    document
+      .getElementById("resetConfirmBtn")
+      .addEventListener("click", confirmReset);
   }
 
   // ---------- Keyboard ----------
@@ -1449,6 +1568,9 @@
         }
         return;
       }
+
+      // Don't handle shortcuts when a modal is open
+      if (document.querySelector(".modal-overlay.open")) return;
 
       const k = e.key.toLowerCase();
       const ctrl = e.ctrlKey || e.metaKey;
@@ -1466,7 +1588,7 @@
         }
         if (k === "s") {
           e.preventDefault();
-          document.getElementById("save").click();
+          openSaveModal();
           return;
         }
         return;
@@ -1642,6 +1764,7 @@
     bindActions();
     bindKeyboard();
     bindResizeHandles();
+    bindModals();
 
     const loaded = await loadSavedCanvas();
 
