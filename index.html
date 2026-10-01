@@ -68,13 +68,13 @@
   <body
     class="min-h-screen text-slate-800 dark:text-slate-200 font-sans antialiased selection:bg-accent/30"
   >
-    <!-- Header -->
+    <!-- Header (Sticky) -->
     <header
-      class="max-w-[1400px] mx-auto px-4 sm:px-6 pt-6 pb-3 flex items-center justify-between"
+      class="sticky top-0 z-40 max-w-[1400px] mx-auto px-4 sm:px-6 pt-4 pb-3 flex items-center justify-between backdrop-blur-xl bg-white/60 dark:bg-ink-900/60 border-b border-black/5 dark:border-white/5"
     >
       <div class="flex items-center gap-3">
         <div
-          class="w-9 h-9 rounded-xl bg-gradient-to-br from-accent to-fuchsia-500 shadow-glow grid place-items-center"
+          class="w-9 h-9 rounded-xl bg-gradient-to-br from-accent to-fuchsia-500 shadow-glow grid place-items-center transition-transform duration-300 hover:scale-105"
         >
           <svg
             viewBox="0 0 24 24"
@@ -156,17 +156,14 @@
     </header>
 
     <!-- Main -->
-    <main class="max-w-[1400px] mx-auto px-4 sm:px-6 pb-6">
+    <main class="max-w-[1400px] mx-auto px-4 sm:px-6 pt-4 pb-6">
       <div class="grid grid-cols-1 lg:grid-cols-[260px_1fr_240px] gap-4">
         <!-- Tools Board -->
-        <aside
-          class="bg-white/70 dark:bg-ink-800/70 backdrop-blur border border-black/5 dark:border-white/5 rounded-2xl p-3 sm:p-4 shadow-xl lg:sticky lg:top-4 lg:self-start"
-        >
+        <aside class="panel-card lg:sticky lg:top-[88px] lg:self-start">
           <!-- Shapes -->
           <section class="mb-5">
-            <h2
-              class="text-[11px] uppercase tracking-widest text-slate-500 font-medium mb-2 px-1"
-            >
+            <h2 class="section-title">
+              <span class="accent-line"></span>
               Shapes
             </h2>
             <div class="grid grid-cols-3 lg:grid-cols-3 gap-1.5">
@@ -176,7 +173,7 @@
               >
                 <svg
                   viewBox="0 0 24 24"
-                  class="w-5 h-5"
+                  class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
@@ -191,7 +188,7 @@
               >
                 <svg
                   viewBox="0 0 24 24"
-                  class="w-5 h-5"
+                  class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
@@ -206,7 +203,7 @@
               >
                 <svg
                   viewBox="0 0 24 24"
-                  class="w-5 h-5"
+                  class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
@@ -216,15 +213,13 @@
                 </svg>
                 <span class="text-[10px]">Tri</span>
               </button>
-
-              <!-- 👇 جدید: Line -->
               <button
                 data-tool="line"
                 class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
               >
                 <svg
                   viewBox="0 0 24 24"
-                  class="w-5 h-5"
+                  class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
@@ -234,15 +229,13 @@
                 </svg>
                 <span class="text-[10px]">Line</span>
               </button>
-
-              <!-- 👇 جدید: Arrow -->
               <button
                 data-tool="arrow"
                 class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
               >
                 <svg
                   viewBox="0 0 24 24"
-                  class="w-5 h-5"
+                  class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
@@ -254,8 +247,6 @@
                 </svg>
                 <span class="text-[10px]">Arrow</span>
               </button>
-
-              <!-- Fill (بدون تغییر) -->
               <label
                 class="flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition cursor-pointer"
               >
@@ -280,19 +271,18 @@
 
           <!-- Options -->
           <section class="mb-5">
-            <h2
-              class="text-[11px] uppercase tracking-widest text-slate-500 font-medium mb-2 px-1"
-            >
+            <h2 class="section-title">
+              <span class="accent-line"></span>
               Options
             </h2>
             <div class="grid grid-cols-5 lg:grid-cols-2 gap-1.5 mb-3">
               <button
                 data-tool="brush"
-                class="tool-btn active group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
+                class="tool-btn active group relative flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
               >
                 <svg
                   viewBox="0 0 24 24"
-                  class="w-5 h-5"
+                  class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
@@ -306,14 +296,15 @@
                   />
                 </svg>
                 <span class="text-[10px]">Brush</span>
+                <kbd class="kbd-hint">B</kbd>
               </button>
               <button
                 data-tool="eraser"
-                class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
+                class="tool-btn group relative flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
               >
                 <svg
                   viewBox="0 0 24 24"
-                  class="w-5 h-5"
+                  class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
@@ -324,14 +315,15 @@
                   <path d="M20 20h-4" />
                 </svg>
                 <span class="text-[10px]">Eraser</span>
+                <kbd class="kbd-hint">E</kbd>
               </button>
               <button
                 data-tool="fill"
-                class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
+                class="tool-btn group relative flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
               >
                 <svg
                   viewBox="0 0 24 24"
-                  class="w-5 h-5"
+                  class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
@@ -343,14 +335,15 @@
                   <path d="M5 19c-1 0-2 1-2 2 0 0 3 0 3-2z" />
                 </svg>
                 <span class="text-[10px]">Fill</span>
+                <kbd class="kbd-hint">F</kbd>
               </button>
               <button
                 data-tool="text"
-                class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
+                class="tool-btn group relative flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
               >
                 <svg
                   viewBox="0 0 24 24"
-                  class="w-5 h-5"
+                  class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
@@ -362,16 +355,15 @@
                   <path d="M9 19h6" />
                 </svg>
                 <span class="text-[10px]">Text</span>
+                <kbd class="kbd-hint">T</kbd>
               </button>
-
-              <!-- 👇 جدید: Move BG -->
               <button
                 data-tool="move-bg"
-                class="tool-btn group flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
+                class="tool-btn group relative flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
               >
                 <svg
                   viewBox="0 0 24 24"
-                  class="w-5 h-5"
+                  class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
@@ -386,10 +378,10 @@
                   <path d="M12 2v20" />
                 </svg>
                 <span class="text-[10px]">Move BG</span>
+                <kbd class="kbd-hint">M</kbd>
               </button>
             </div>
 
-            <!-- Background upload -->
             <label
               class="mt-2 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-medium text-slate-500 dark:text-slate-400 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer transition"
             >
@@ -415,7 +407,6 @@
               />
             </label>
 
-            <!-- Clear background (فقط وقتی عکس هست نشون داده میشه) -->
             <button
               id="clearBg"
               class="mt-1.5 hidden w-full flex items-center justify-center gap-2 py-1.5 rounded-xl text-xs font-medium text-rose-400 bg-rose-500/5 hover:bg-rose-500/15 transition"
@@ -433,7 +424,6 @@
               Remove Image
             </button>
 
-            <!-- Background controls -->
             <div id="bgControls" class="mt-1.5 hidden grid grid-cols-3 gap-1.5">
               <button
                 id="bgZoomOut"
@@ -488,8 +478,6 @@
                 </svg>
                 <span class="text-[10px]">Reset</span>
               </button>
-
-              <!-- 👇 جدید: Flip H -->
               <button
                 id="bgFlipH"
                 title="Flip horizontal"
@@ -510,8 +498,6 @@
                 </svg>
                 <span class="text-[10px]">Flip H</span>
               </button>
-
-              <!-- 👇 جدید: Flip V -->
               <button
                 id="bgFlipV"
                 title="Flip vertical"
@@ -534,7 +520,7 @@
               </button>
             </div>
 
-            <div class="px-1">
+            <div class="px-1 mt-3">
               <div class="flex items-center justify-between mb-1.5">
                 <span class="text-[11px] text-slate-500 dark:text-slate-400"
                   >Size</span
@@ -558,16 +544,17 @@
 
           <!-- Colors -->
           <section class="mb-5">
-            <h2
-              class="text-[11px] uppercase tracking-widest text-slate-500 font-medium mb-2 px-1"
-            >
+            <h2 class="section-title">
+              <span class="accent-line"></span>
               Colors
             </h2>
             <div id="colorRow" class="grid grid-cols-6 gap-2 px-1"></div>
           </section>
 
           <!-- Actions -->
-          <section class="grid grid-cols-2 gap-2 pt-3 border-t border-white/5">
+          <section
+            class="grid grid-cols-2 gap-2 pt-3 border-t border-black/5 dark:border-white/5"
+          >
             <button
               id="undo"
               title="Undo (Ctrl+Z)"
@@ -626,7 +613,7 @@
             </button>
             <button
               id="save"
-              class="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-white bg-accent hover:bg-accent-hover shadow-glow transition"
+              class="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-white bg-gradient-to-br from-accent to-fuchsia-500 hover:from-accent-hover hover:to-fuchsia-600 shadow-glow transition"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -666,9 +653,7 @@
         </aside>
 
         <!-- Canvas Board -->
-        <section
-          class="bg-white/70 dark:bg-ink-800/70 backdrop-blur border border-black/5 dark:border-white/5 rounded-2xl p-2 sm:p-3 shadow-xl"
-        >
+        <section class="panel-card">
           <div class="flex items-center justify-between px-2 pb-2">
             <span class="text-[11px] text-slate-500">Canvas</span>
             <span
@@ -680,28 +665,24 @@
           </div>
           <div
             id="canvasWrapper"
-            class="relative rounded-xl overflow-hidden bg-white"
+            class="relative rounded-xl overflow-hidden bg-white ring-1 ring-black/5 dark:ring-white/10"
           >
-            <!-- Background Image Layer (Behind Canvas) -->
             <img
               id="bgLayer"
               class="absolute inset-0 w-full h-full object-contain pointer-events-none hidden"
               alt=""
             />
-            <!-- SVG Overlay for resize handles (above image, below canvas) -->
             <svg
               id="bgOverlay"
               class="absolute inset-0 w-full h-full pointer-events-none hidden"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <!-- Line from top edge to rotate handle -->
               <line
                 id="rotateLine"
                 stroke="#6366f1"
                 stroke-width="1.5"
                 opacity="0.7"
               />
-              <!-- Bounding box -->
               <polygon
                 id="bgBBox"
                 fill="none"
@@ -710,7 +691,6 @@
                 stroke-dasharray="5 5"
                 opacity="0.8"
               />
-              <!-- Rotate handle (above top edge) -->
               <circle
                 id="rotateHandle"
                 r="8"
@@ -719,7 +699,6 @@
                 stroke-width="2"
                 class="pointer-events-auto"
               />
-              <!-- Corner handles (resize) -->
               <circle
                 id="handleTL"
                 r="7"
@@ -753,21 +732,18 @@
                 class="pointer-events-auto cursor-nwse-resize"
               />
             </svg>
-            <!-- Layer Stack (dynamic canvases go here) -->
             <div
               id="layerStack"
               class="relative w-full h-[60vh] sm:h-[72vh]"
             ></div>
           </div>
         </section>
-        <!-- 👇 Layers Panel (جدید) -->
-        <aside
-          class="bg-white/70 dark:bg-ink-800/70 backdrop-blur border border-black/5 dark:border-white/5 rounded-2xl p-3 shadow-xl lg:sticky lg:top-4 lg:self-start"
-        >
+
+        <!-- Layers Panel -->
+        <aside class="panel-card lg:sticky lg:top-[88px] lg:self-start">
           <div class="flex items-center justify-between mb-3">
-            <h2
-              class="text-[11px] uppercase tracking-widest text-slate-500 font-medium px-1"
-            >
+            <h2 class="section-title !mb-0">
+              <span class="accent-line"></span>
               Layers
             </h2>
             <button
@@ -788,13 +764,11 @@
             </button>
           </div>
 
-          <!-- Layer list -->
           <div
             id="layerList"
-            class="space-y-1.5 mb-3 max-h-[50vh] overflow-y-auto no-scrollbar"
+            class="space-y-1.5 mb-3 max-h-[50vh] overflow-y-auto custom-scrollbar"
           ></div>
 
-          <!-- Opacity slider -->
           <div class="pt-3 border-t border-black/5 dark:border-white/5">
             <div class="flex items-center justify-between mb-1.5 px-1">
               <span class="text-[11px] text-slate-500 dark:text-slate-400"
@@ -817,6 +791,8 @@
           </div>
         </aside>
       </div>
+
+      <!-- Shortcuts -->
       <div
         class="mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[11px] text-slate-500 dark:text-slate-400"
       >

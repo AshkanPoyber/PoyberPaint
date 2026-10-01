@@ -354,7 +354,6 @@
 
   // ---------- Layer Panel UI ----------
   function renderLayerList() {
-    // Don't re-render while an input is open
     if (layerList.querySelector(".layer-name-input")) return;
 
     layerList.innerHTML = "";
@@ -388,10 +387,10 @@
         startRenameLayer(layer.id, nameEl);
       });
 
-      // Delete
+      // Delete (with new class for hover-only reveal)
       const delBtn = document.createElement("button");
       delBtn.type = "button";
-      delBtn.className = "layer-btn";
+      delBtn.className = "layer-btn layer-delete-btn";
       delBtn.title = "Delete layer";
       delBtn.innerHTML = `<svg viewBox="0 0 24 24" class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg>`;
       delBtn.addEventListener("click", (e) => {
@@ -415,7 +414,6 @@
       layerList.appendChild(item);
     });
 
-    // Update opacity slider
     const active = LayerStore.getActive();
     if (active) {
       layerOpacity.value = Math.round(active.opacity * 100);
