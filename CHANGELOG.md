@@ -9,10 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
-- Layer system
 - Export to SVG
 - Custom canvas size
-- Color history
+- Gradient tool
+- Background removal
+
+---
+
+## [2.1.0] - 2026-10-01
+
+### Added
+
+- 💾 **Save modal** — file name input with success toast
+- 🔄 **Reset modal** — confirmation dialog (replacing browser `confirm`)
+- 🗑️ **Delete layer modal** — confirmation dialog per layer
+- ❓ **Help modal** — shortcuts and tips, accessible from the header
+- 🔔 **Toast notifications** — for all major actions (save, reset, theme toggle, add/delete/duplicate layer, clear canvas, import image)
+- ⏳ **Loading state** for image import — spinner + "Importing image…" text
+- 🎨 **Custom scrollbar** — thin, rounded, accent-tinted (globally)
+
+### Changed
+
+- 🧊 Modernized UI — glassmorphic panels, subtle hover elevation
+- 🎯 Section titles now have gradient accent lines
+- ⌨️ Tool buttons show keyboard hint badges
+- 🎨 Save button uses a gradient (accent → fuchsia)
+- 👁️ Layer delete button reveals only on hover (like Figma)
+- 📐 Tools panel width reduced 260px → 240px for a wider canvas
+- 🖼️ Header reverted to non-sticky (was intrusive)
+- 📄 Footer shortcuts moved into the new Help modal
+
+### Fixed
+
+- Delete layer no longer uses a native browser confirm dialog
+- Theme toggle now provides visual feedback via toast
 
 ---
 
@@ -42,6 +72,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rename input stuck, blocking UI
 - Layer list not refreshing after rename
 
+---
+
 ## [1.3.0] - 2026-09-24
 
 ### Added
@@ -66,9 +98,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Overlay bounds now correctly match contain-fit + rotation
 - Removed `pointer-events: none` on canvas that blocked pan
-- `zoomBg()` Math.min bug that capped scale at 0.3
+- `zoomBg()` `Math.min` bug that capped scale at 0.3
 - Export now applies rotation and correct contain-fit
 - Eraser uses `destination-out` composite for true transparency
+
+---
 
 ## [1.2.0] - 2026-09-23
 
