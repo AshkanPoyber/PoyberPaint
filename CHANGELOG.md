@@ -9,9 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
+- Shape selection & transform
 - Custom canvas size
 - Gradient tool
 - Background removal
+
+---
+
+## [2.3.0] - 2026-10-15
+
+### Added
+
+- 🔍 **Virtual camera** — zoom and pan across the canvas without losing precision
+- ⌨️ **`Ctrl + Wheel`** — zoom to the cursor position
+- 🖐️ **`Space + Drag`** — pan the canvas
+- 🖱️ **Middle-Mouse Drag** and **`Ctrl + Drag`** — pan the canvas
+- ⇧ **`Shift + Wheel`** — pan horizontally with the wheel
+- 🎛️ **Zoom controls** in the Canvas header: `[−] 100% [+] [Fit] [Reset]`
+- ⌨️ **Zoom shortcuts** — `Ctrl+0` (reset), `Ctrl+1` (fit), `Ctrl++` / `Ctrl+-` (step)
+- 💡 **Help modal** — new "Zoom & Pan" section + Ctrl+Scroll pro tip
+
+### Changed
+
+- 🔄 `getPos()` now converts from transformed space back to layout space, so drawing, shapes, text, and flood fill stay precise under any zoom or pan
+- 📐 `#zoomControls` moved out of the viewport into the Canvas header so it never overlaps artwork
+- 🖱️ Plain `Wheel` now scrolls the page naturally — only `Ctrl + Wheel` zooms
+
+### Fixed
+
+- `zoomAt()` referenced undefined locals — zoom buttons now work correctly
+- Removed a duplicated `Ctrl + Shift + S` handler in `bindKeyboard`
+- `resetZoom()` simplified (no-op math removed)
+
+### Notes
+
+- Camera state is **not persisted** between sessions — starts fresh at 100%
+- The camera only affects rendering; canvas data and vector state are untouched
+- Zoom & pan fully respect `Export PNG` and `Export SVG`
 
 ---
 

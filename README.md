@@ -60,6 +60,7 @@ Draw. Sketch. Create.
 - ↩️ **Undo / Redo** — per-layer, with `Ctrl+Z` / `Ctrl+Y`
 - 💾 **Export PNG** — merges all visible layers, `Ctrl+S`
 - 🎯 **Export SVG** — true vector output (paths, shapes, text, masks) `Ctrl+Shift+S`
+- 🔍 **Zoom & Pan** — `Ctrl+Scroll` to zoom, `Space+Drag` to pan
 - 🌗 **Light / Dark theme** — auto-saved and switchable
 - 📱 **Fully responsive** — desktop, tablet, mobile
 - 🖱️ **Pointer Events** — mouse, touch, and stylus
@@ -123,6 +124,8 @@ Building PoyberPaint helped me practice:
 - 🎭 **SVG Masks** — reproducing canvas `destination-out` eraser with `<mask>` elements
 - 📤 **SVG Serialization** — building DOM nodes with `createElementNS` and serializing with `XMLSerializer`
 - 🧩 **Non-invasive refactoring** — adding features without breaking existing architecture
+- 🔍 **Virtual camera** — CSS-transform-based zoom & pan that keeps canvas coordinates in sync
+- 🖱️ **Coordinate spaces** — converting between screen, layout, and transformed space with `getBoundingClientRect` + `offsetWidth`
 
 ---
 
@@ -149,6 +152,14 @@ Building PoyberPaint helped me practice:
 | `Ctrl + Y`         | Redo               |
 | `Ctrl + S`         | Save as PNG        |
 | `Ctrl + Shift + S` | Export as SVG      |
+| `Ctrl + Scroll`    | Zoom to cursor     |
+| `Ctrl + +`         | Zoom in            |
+| `Ctrl + -`         | Zoom out           |
+| `Ctrl + 0`         | Reset zoom         |
+| `Ctrl + 1`         | Fit to screen      |
+| `Space + Drag`     | Pan canvas         |
+| `Middle + Drag`    | Pan canvas         |
+| `Shift + Scroll`   | Pan horizontally   |
 
 ---
 
@@ -215,6 +226,8 @@ PoyberPaint/
 - [x] Layer system
 - [x] Modals & toasts for better UX
 - [x] Export to SVG
+- [x] Zoom & Pan
+- [ ] Shape selection & transform
 - [ ] Custom canvas size
 - [ ] Gradient tool
 - [ ] Background removal
