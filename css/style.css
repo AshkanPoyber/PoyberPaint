@@ -864,3 +864,145 @@ html.dark .svg-warnings {
 .svg-warnings li:last-child {
   margin-bottom: 0;
 }
+
+/* ═══════════════════════════════════════════════ */
+/*  CAMERA — ZOOM & PAN                             */
+/* ═══════════════════════════════════════════════ */
+#canvasViewport {
+  cursor: default;
+}
+
+#canvasViewport.panning {
+  cursor: grabbing !important;
+}
+
+#canvasViewport.pan-ready {
+  cursor: grab;
+}
+
+#canvasWorld {
+  transform-origin: 0 0;
+  will-change: transform;
+  transition: none;
+}
+
+/* Smooth zoom animation (only when reset/fit is used) */
+#canvasWorld.smooth {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* When Move BG is active, revert cursors to move-bg style */
+body.tool-move-bg #canvasViewport {
+  cursor: default;
+}
+
+/* Zoom controls */
+#zoomControls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  user-select: none;
+}
+
+html.dark #zoomControls {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+#zoomControls button {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  color: #475569;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+  flex-shrink: 0;
+}
+
+html.dark #zoomControls button {
+  color: #cbd5e1;
+}
+
+#zoomControls button:hover {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+}
+
+html.dark #zoomControls button:hover {
+  background: rgba(129, 140, 248, 0.18);
+  color: #e0e7ff;
+}
+
+#zoomControls button:active {
+  transform: scale(0.94);
+}
+
+#zoomLabel {
+  min-width: 44px;
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 600;
+  font-family: "JetBrains Mono", monospace;
+  color: #475569;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+html.dark #zoomLabel {
+  color: #cbd5e1;
+}
+
+#zoomLabel:hover {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+}
+
+html.dark #zoomLabel:hover {
+  background: rgba(129, 140, 248, 0.18);
+  color: #e0e7ff;
+}
+
+#zoomControls .divider {
+  width: 1px;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.08);
+  margin: 0 2px;
+}
+
+html.dark #zoomControls .divider {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 640px) {
+  #zoomControls button {
+    width: 22px;
+    height: 22px;
+  }
+  #zoomLabel {
+    min-width: 40px;
+    font-size: 10px;
+  }
+  #zoomControls .divider {
+    display: none;
+  }
+}
+
+/* Inline kbd inside help-tip text */
+.help-tip .kbd {
+  font-size: 10px;
+  padding: 1px 5px;
+  margin: 0 2px;
+  vertical-align: middle;
+}

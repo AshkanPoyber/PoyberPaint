@@ -20,6 +20,8 @@
   const themeToggle = document.getElementById("themeToggle");
   const helpToggle = document.getElementById("helpToggle");
   const canvasWrapper = document.getElementById("canvasWrapper");
+  const canvasViewport = document.getElementById("canvasViewport");
+  const canvasWorld = document.getElementById("canvasWorld");
   const bgUpload = document.getElementById("bgUpload");
   const importLabel = document.getElementById("importLabel");
   const importText = document.getElementById("importText");
@@ -94,6 +96,19 @@
   let shapeEndPos = null;
   let currentStroke = null;
   let bgRecordedThisSession = false;
+
+  // CAMERA: zoom & pan state
+  let camera = {
+    zoom: 1, // 0.1 .. 8
+    panX: 0, // in viewport pixels
+    panY: 0,
+  };
+  const ZOOM_MIN = 0.1;
+  const ZOOM_MAX = 8;
+  const ZOOM_STEP = 1.15;
+  let isPanning = false; // camera pan (not bg pan)
+  let panStart = { x: 0, y: 0, panX: 0, panY: 0 };
+  let spaceDown = false;
 
   // Pending delete layer id (for modal confirm)
   let pendingDeleteLayerId = null;
@@ -751,7 +766,135 @@
     const canvas = getActiveCanvas();
     if (!canvas) return { x: 0, y: 0 };
     const r = canvas.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
+
+    // The canvas has a CSS layout size (offsetWidth/Height) that does NOT
+    // include our camera transform. getBoundingClientRect() includes it.
+    // We need to convert from transformed space back to layout space.
+    const layoutW = canvas.offsetWidth || r.width;
+    const layoutH = canvas.offsetHeight || r.height;
+    const scaleX = r.width / layoutW;
+    const scaleY = r.height / layoutH;
+
+    return {
+      x: (e.clientX - r.left) / scaleX,
+      y: (e.clientY - r.top) / scaleY,
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  CAMERA — Zoom & Pan
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * Apply the current camera transform to the world element.
+   * @param {boolean} smooth - animate the transform (for reset/fit)
+   */
+  function applyCamera(smooth = false) {
+    if (!canvasWorld) return;
+
+    if (smooth) {
+      canvasWorld.classList.add("smooth");
+      setTimeout(() => canvasWorld.classList.remove("smooth"), 300);
+    }
+
+    canvasWorld.style.transform =
+      `translate(${camera.panX}px, ${camera.panY}px) ` +
+      `scale(${camera.zoom})`;
+
+    updateZoomLabel();
+    updateBgOverlay(); // overlay handles are in world coords, so they scale with us
+  }
+
+  /**
+   * Update the % label in the zoom controls.
+   */
+  function updateZoomLabel() {
+    const label = document.getElementById("zoomLabel");
+    if (!label) return;
+    label.textContent = Math.round(camera.zoom * 100) + "%";
+  }
+
+  /**
+   * Clamp helper.
+   */
+  function clamp(v, min, max) {
+    return Math.max(min, Math.min(max, v));
+  }
+
+  /**
+   * Zoom toward a specific screen point (usually the mouse position).
+   * Keeps that point visually anchored.
+   *
+   * @param {number} screenX
+   * @param {number} screenY
+   * @param {number} factor - e.g. 1.15 for zoom in, 1/1.15 for zoom out
+   */
+  function zoomAt(screenX, screenY, factor) {
+    if (!canvasViewport) return;
+
+    const rect = canvasViewport.getBoundingClientRect();
+    const localX = screenX - rect.left;
+    const localY = screenY - rect.top;
+
+    const oldZoom = camera.zoom;
+    const newZoom = clamp(oldZoom * factor, ZOOM_MIN, ZOOM_MAX);
+    if (newZoom === oldZoom) return;
+
+    // Point in world-space (before zoom)
+    const worldX = (localX - camera.panX) / oldZoom;
+    const worldY = (localY - camera.panY) / oldZoom;
+
+    // After zoom, keep the same world point under the cursor
+    camera.zoom = newZoom;
+    camera.panX = localX - worldX * newZoom;
+    camera.panY = localY - worldY * newZoom;
+
+    applyCamera();
+  }
+
+  /**
+   * Zoom by a factor around the viewport center.
+   */
+  function zoomCenter(factor) {
+    if (!canvasViewport) return;
+    const rect = canvasViewport.getBoundingClientRect();
+    zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, factor);
+  }
+
+  /**
+   * Reset zoom to 100% and center the world.
+   */
+  function resetZoom() {
+    if (!canvasViewport) return;
+    camera.zoom = 1;
+    camera.panX = 0;
+    camera.panY = 0;
+    applyCamera(true);
+  }
+
+  /**
+   * Fit the canvas into the viewport (with a small padding).
+   * Since our world is exactly the viewport size, "fit" == "1:1".
+   * Kept as a separate function for future custom canvas sizes.
+   */
+  function fitToScreen() {
+    if (!canvasViewport) return;
+    // For now, same as reset (world == viewport size)
+    resetZoom();
+  }
+
+  /**
+   * Center the world in the viewport at the current zoom.
+   */
+  function centerCamera(smooth = true) {
+    if (!canvasViewport) return;
+    const rect = canvasViewport.getBoundingClientRect();
+    const worldW = rect.width;
+    const worldH = rect.height;
+
+    camera.panX = (rect.width - worldW * camera.zoom) / 2;
+    camera.panY = (rect.height - worldH * camera.zoom) / 2;
+    applyCamera(smooth);
   }
 
   // ---------- Shapes ----------
@@ -1915,6 +2058,125 @@
     });
   }
 
+  function bindCamera() {
+    if (!canvasViewport) return;
+
+    // ── Wheel ─────────────────────────────────
+    //  - Wheel (no modifier)  → native page scroll (do nothing)
+    //  - Ctrl/Cmd + Wheel     → zoom at cursor
+    //  - Shift + Wheel        → horizontal pan (of the camera)
+    //  - Alt + Wheel          → vertical pan (bonus, some users like it)
+    canvasViewport.addEventListener(
+      "wheel",
+      (e) => {
+        // Ctrl/Cmd + Wheel → zoom at cursor
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          const factor = e.deltaY > 0 ? 1 / ZOOM_STEP : ZOOM_STEP;
+          zoomAt(e.clientX, e.clientY, factor);
+          return;
+        }
+
+        // Shift + Wheel → horizontal camera pan
+        if (e.shiftKey && !e.altKey) {
+          e.preventDefault();
+          camera.panX -= e.deltaY;
+          applyCamera();
+          return;
+        }
+
+        // Alt + Wheel → vertical camera pan
+        if (e.altKey) {
+          e.preventDefault();
+          camera.panY -= e.deltaY;
+          applyCamera();
+          return;
+        }
+
+        // Plain wheel → let the browser scroll the page naturally.
+        // (No preventDefault, no stopPropagation.)
+      },
+      { passive: false },
+    );
+
+    // ── Pan: middle mouse, ctrl+drag, space+drag ──
+    canvasViewport.addEventListener("pointerdown", (e) => {
+      const isMiddle = e.button === 1;
+      const isCtrlDrag = e.button === 0 && (e.ctrlKey || e.metaKey);
+      const isSpaceDrag = e.button === 0 && spaceDown;
+
+      if (!isMiddle && !isCtrlDrag && !isSpaceDrag) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      isPanning = true;
+      panStart.x = e.clientX;
+      panStart.y = e.clientY;
+      panStart.panX = camera.panX;
+      panStart.panY = camera.panY;
+
+      canvasViewport.classList.add("panning");
+      canvasViewport.setPointerCapture(e.pointerId);
+    });
+
+    canvasViewport.addEventListener("pointermove", (e) => {
+      if (!isPanning) return;
+      e.preventDefault();
+
+      camera.panX = panStart.panX + (e.clientX - panStart.x);
+      camera.panY = panStart.panY + (e.clientY - panStart.y);
+      applyCamera();
+    });
+
+    const endPan = (e) => {
+      if (!isPanning) return;
+      isPanning = false;
+      canvasViewport.classList.remove("panning");
+      try {
+        canvasViewport.releasePointerCapture(e.pointerId);
+      } catch {}
+    };
+
+    canvasViewport.addEventListener("pointerup", endPan);
+    canvasViewport.addEventListener("pointercancel", endPan);
+
+    // ── Space key: cursor hint ─────────────────
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space" && !spaceDown) {
+        const tag = (e.target.tagName || "").toLowerCase();
+        if (tag === "input" || tag === "textarea") return;
+        spaceDown = true;
+        canvasViewport.classList.add("pan-ready");
+        e.preventDefault();
+      }
+    });
+
+    document.addEventListener("keyup", (e) => {
+      if (e.code === "Space") {
+        spaceDown = false;
+        canvasViewport.classList.remove("pan-ready");
+      }
+    });
+
+    // ── Zoom controls UI ───────────────────────
+    document.getElementById("zoomIn")?.addEventListener("click", () => {
+      zoomCenter(ZOOM_STEP);
+    });
+    document.getElementById("zoomOut")?.addEventListener("click", () => {
+      zoomCenter(1 / ZOOM_STEP);
+    });
+    document.getElementById("zoomFit")?.addEventListener("click", () => {
+      fitToScreen();
+    });
+    document.getElementById("zoomReset")?.addEventListener("click", () => {
+      resetZoom();
+    });
+    document.getElementById("zoomLabel")?.addEventListener("click", () => {
+      resetZoom();
+    });
+  }
+
   // ---------- Keyboard ----------
   function bindKeyboard() {
     document.addEventListener("keydown", (e) => {
@@ -1951,6 +2213,32 @@
         if (k === "s") {
           e.preventDefault();
           openSaveModal();
+          return;
+        }
+        // CAMERA: zoom shortcuts
+        if (k === "0" && e.shiftKey) {
+          e.preventDefault();
+          resetZoom();
+          return;
+        }
+        if (k === "0") {
+          e.preventDefault();
+          resetZoom();
+          return;
+        }
+        if (k === "1") {
+          e.preventDefault();
+          fitToScreen();
+          return;
+        }
+        if (k === "=" || k === "+") {
+          e.preventDefault();
+          zoomCenter(ZOOM_STEP);
+          return;
+        }
+        if (k === "-") {
+          e.preventDefault();
+          zoomCenter(1 / ZOOM_STEP);
           return;
         }
         return;
@@ -2131,6 +2419,7 @@
     bindKeyboard();
     bindResizeHandles();
     bindModals();
+    bindCamera();
 
     const loaded = await loadSavedCanvas();
 
@@ -2157,7 +2446,7 @@
       "resize",
       debounce(() => {
         setupCanvas();
-        updateBgOverlay();
+        applyCamera();
       }, 200),
     );
   }

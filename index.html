@@ -715,11 +715,88 @@
 
         <!-- Canvas Board -->
         <section class="panel-card">
-          <div class="flex items-center justify-between px-2 pb-2">
-            <span class="text-[11px] text-slate-500">Canvas</span>
+          <div class="flex items-center justify-between px-2 pb-2 gap-2">
+            <span class="text-[11px] text-slate-500 flex-shrink-0">Canvas</span>
+
+            <!-- CAMERA: zoom controls (moved from viewport) -->
+            <div id="zoomControls">
+              <button
+                id="zoomOut"
+                title="Zoom out (Ctrl + -)"
+                aria-label="Zoom out"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                >
+                  <path d="M5 12h14" />
+                </svg>
+              </button>
+              <button id="zoomLabel" title="Reset zoom (Ctrl + 0)">100%</button>
+              <button
+                id="zoomIn"
+                title="Zoom in (Ctrl + +)"
+                aria-label="Zoom in"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
+              <div class="divider"></div>
+              <button
+                id="zoomFit"
+                title="Fit to screen (Ctrl + 1)"
+                aria-label="Fit"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 8V5a2 2 0 0 1 2-2h3" />
+                  <path d="M16 3h3a2 2 0 0 1 2 2v3" />
+                  <path d="M21 16v3a2 2 0 0 1-2 2h-3" />
+                  <path d="M8 21H5a2 2 0 0 1-2-2v-3" />
+                </svg>
+              </button>
+              <button
+                id="zoomReset"
+                title="Reset to 100% (Ctrl + Shift + 0)"
+                aria-label="Reset zoom"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                  <path d="M3 3v5h5" />
+                </svg>
+              </button>
+            </div>
+
             <span
               id="saveIndicator"
-              class="text-[11px] text-emerald-400 opacity-0 transition-opacity duration-300"
+              class="text-[11px] text-emerald-400 opacity-0 transition-opacity duration-300 flex-shrink-0"
               >✓ Saved</span
             >
           </div>
@@ -727,75 +804,84 @@
             id="canvasWrapper"
             class="relative rounded-xl overflow-hidden bg-white ring-1 ring-black/5 dark:ring-white/10"
           >
-            <img
-              id="bgLayer"
-              class="absolute inset-0 w-full h-full object-contain pointer-events-none hidden"
-              alt=""
-            />
-            <svg
-              id="bgOverlay"
-              class="absolute inset-0 w-full h-full pointer-events-none hidden"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <line
-                id="rotateLine"
-                stroke="#6366f1"
-                stroke-width="1.5"
-                opacity="0.7"
-              />
-              <polygon
-                id="bgBBox"
-                fill="none"
-                stroke="#6366f1"
-                stroke-width="1.5"
-                stroke-dasharray="5 5"
-                opacity="0.8"
-              />
-              <circle
-                id="rotateHandle"
-                r="8"
-                fill="#8b5cf6"
-                stroke="#fff"
-                stroke-width="2"
-                class="pointer-events-auto"
-              />
-              <circle
-                id="handleTL"
-                r="7"
-                fill="#6366f1"
-                stroke="#fff"
-                stroke-width="2"
-                class="pointer-events-auto cursor-nwse-resize"
-              />
-              <circle
-                id="handleTR"
-                r="7"
-                fill="#6366f1"
-                stroke="#fff"
-                stroke-width="2"
-                class="pointer-events-auto cursor-nesw-resize"
-              />
-              <circle
-                id="handleBL"
-                r="7"
-                fill="#6366f1"
-                stroke="#fff"
-                stroke-width="2"
-                class="pointer-events-auto cursor-nesw-resize"
-              />
-              <circle
-                id="handleBR"
-                r="7"
-                fill="#6366f1"
-                stroke="#fff"
-                stroke-width="2"
-                class="pointer-events-auto cursor-nwse-resize"
-              />
-            </svg>
+            <!-- SVG-EXPORT: camera viewport -->
             <div
-              id="layerStack"
-              class="relative w-full h-[60vh] sm:h-[72vh]"
-            ></div>
+              id="canvasViewport"
+              class="relative w-full h-[60vh] sm:h-[72vh] overflow-hidden"
+            >
+              <!-- SVG-EXPORT: camera world (transformed) -->
+              <div
+                id="canvasWorld"
+                class="absolute top-0 left-0 w-full h-full origin-top-left"
+              >
+                <img
+                  id="bgLayer"
+                  class="absolute inset-0 w-full h-full object-contain pointer-events-none hidden"
+                  alt=""
+                />
+                <svg
+                  id="bgOverlay"
+                  class="absolute inset-0 w-full h-full pointer-events-none hidden"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <line
+                    id="rotateLine"
+                    stroke="#6366f1"
+                    stroke-width="1.5"
+                    opacity="0.7"
+                  />
+                  <polygon
+                    id="bgBBox"
+                    fill="none"
+                    stroke="#6366f1"
+                    stroke-width="1.5"
+                    stroke-dasharray="5 5"
+                    opacity="0.8"
+                  />
+                  <circle
+                    id="rotateHandle"
+                    r="8"
+                    fill="#8b5cf6"
+                    stroke="#fff"
+                    stroke-width="2"
+                    class="pointer-events-auto"
+                  />
+                  <circle
+                    id="handleTL"
+                    r="7"
+                    fill="#6366f1"
+                    stroke="#fff"
+                    stroke-width="2"
+                    class="pointer-events-auto cursor-nwse-resize"
+                  />
+                  <circle
+                    id="handleTR"
+                    r="7"
+                    fill="#6366f1"
+                    stroke="#fff"
+                    stroke-width="2"
+                    class="pointer-events-auto cursor-nesw-resize"
+                  />
+                  <circle
+                    id="handleBL"
+                    r="7"
+                    fill="#6366f1"
+                    stroke="#fff"
+                    stroke-width="2"
+                    class="pointer-events-auto cursor-nesw-resize"
+                  />
+                  <circle
+                    id="handleBR"
+                    r="7"
+                    fill="#6366f1"
+                    stroke="#fff"
+                    stroke-width="2"
+                    class="pointer-events-auto cursor-nwse-resize"
+                  />
+                </svg>
+                <div id="layerStack" class="relative w-full h-full"></div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -1004,8 +1090,10 @@
             <path d="M12 8h.01" />
           </svg>
           <p>
-            Import any image to trace over, then use <strong>Move BG</strong> to
-            pan, zoom, resize from corners, or rotate from the top handle.
+            <strong>Pro tip:</strong> hold <kbd class="kbd">Ctrl</kbd> and
+            scroll to zoom the canvas. Hold <kbd class="kbd">Space</kbd> and
+            drag to pan around. Need to scroll the page instead? Just scroll
+            normally — no modifier needed.
           </p>
         </div>
 
@@ -1062,6 +1150,37 @@
           </div>
           <div class="help-row">
             <kbd class="kbd">Ctrl+S</kbd><span>Save as PNG</span>
+          </div>
+          <div class="help-row">
+            <kbd class="kbd">Ctrl+Shift+S</kbd><span>Export as SVG</span>
+          </div>
+        </div>
+
+        <h4 class="help-section-title">Zoom &amp; Pan</h4>
+        <div class="help-grid">
+          <div class="help-row">
+            <kbd class="kbd">Ctrl+Scroll</kbd><span>Zoom to cursor</span>
+          </div>
+          <div class="help-row">
+            <kbd class="kbd">Ctrl++</kbd><span>Zoom in</span>
+          </div>
+          <div class="help-row">
+            <kbd class="kbd">Ctrl+−</kbd><span>Zoom out</span>
+          </div>
+          <div class="help-row">
+            <kbd class="kbd">Ctrl+0</kbd><span>Reset zoom</span>
+          </div>
+          <div class="help-row">
+            <kbd class="kbd">Ctrl+1</kbd><span>Fit to screen</span>
+          </div>
+          <div class="help-row">
+            <kbd class="kbd">Space+Drag</kbd><span>Pan canvas</span>
+          </div>
+          <div class="help-row">
+            <kbd class="kbd">Middle+Drag</kbd><span>Pan canvas</span>
+          </div>
+          <div class="help-row">
+            <kbd class="kbd">Shift+Scroll</kbd><span>Pan horizontally</span>
           </div>
         </div>
 
