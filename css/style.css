@@ -831,3 +831,36 @@ html:not(.dark) .toast {
 #importLabel.is-loading #importSpinner {
   display: block;
 }
+
+/* ═══════════════════════════════════════════════ */
+/*  SVG EXPORT                                      */
+/* ═══════════════════════════════════════════════ */
+.svg-warnings {
+  padding: 10px 12px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 10px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #b45309;
+  margin-bottom: 16px;
+}
+
+html.dark .svg-warnings {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+}
+
+.svg-warnings ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+.svg-warnings li {
+  margin-bottom: 3px;
+}
+
+.svg-warnings li:last-child {
+  margin-bottom: 0;
+}

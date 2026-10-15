@@ -9,10 +9,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
-- Export to SVG
 - Custom canvas size
 - Gradient tool
 - Background removal
+
+---
+
+## [2.2.0] - 2026-10-15
+
+### Added
+
+- 🎯 **Export to SVG** — true vector export, not a rasterized image
+  - Brush strokes become `<path>` elements
+  - Shapes → `<rect>`, `<circle>`, `<polygon>`, `<line>`, `<polyline>`
+  - Text → `<text>` with JetBrains Mono fallback
+  - Eraser → SVG `<mask>` (true transparency, editable in Figma/Illustrator)
+  - Background image → `<image>` with transforms preserved
+- 🧭 **Vector Store** — tracks every action as vector data (runs alongside the canvas)
+- 🪟 **SVG Export modal** — filename input + live warnings for unsupported content
+- ⚠️ **Flood-fill warning** — users are notified when a layer contains pixel-only content that can't be vectorized
+- ⌨️ **`Ctrl + Shift + S`** shortcut for SVG export
+
+### Changed
+
+- 🎨 New `Export SVG` button in the Actions panel (outline accent style)
+- 💬 Warning box in the SVG export modal (amber, non-blocking)
+
+### Internal
+
+- 📦 `js/vector-store.js` — new module for action tracking
+- 📦 `js/svg-export.js` — new module for SVG serialization
+- 🌐 `window.LayerStore` exposed for sibling modules
+- ↩️ Undo/redo now syncs vector actions
+- 🗑️ Layer delete/duplicate propagates to vector store
+
+### Fixed
+
+- `VectorStore.push` could overwrite `layerId` with `undefined`
+- Background image could be pushed twice to the vector store
+
+### Notes
+
+- Flood fill is not exported to SVG (pixel-based) — a warning is shown instead
+- SVG output is DPR-independent (uses CSS pixels)
+- Hidden layers are not exported (matches PNG export behavior)
 
 ---
 

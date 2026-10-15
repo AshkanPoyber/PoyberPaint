@@ -59,6 +59,7 @@ Draw. Sketch. Create.
 
 - ↩️ **Undo / Redo** — per-layer, with `Ctrl+Z` / `Ctrl+Y`
 - 💾 **Export PNG** — merges all visible layers, `Ctrl+S`
+- 🎯 **Export SVG** — true vector output (paths, shapes, text, masks) `Ctrl+Shift+S`
 - 🌗 **Light / Dark theme** — auto-saved and switchable
 - 📱 **Fully responsive** — desktop, tablet, mobile
 - 🖱️ **Pointer Events** — mouse, touch, and stylus
@@ -94,6 +95,7 @@ Draw. Sketch. Create.
 |   **Icons**   | Inline SVG                     |
 |   **Fonts**   | Inter + JetBrains Mono         |
 |  **Storage**  | LocalStorage                   |
+|  **Vector**   | Native SVG (no dependencies)   |
 |  **Hosting**  | GitHub Pages                   |
 
 ---
@@ -117,31 +119,36 @@ Building PoyberPaint helped me practice:
 - 📐 **Transform math** — combining translate, scale, and rotate with correct bounds
 - 🎯 **Hit detection** — SVG pointer events on rotated bounding boxes
 - ✨ **UX polish** — toasts, modals, loading states, and custom scrollbars
+- 🧭 **Vector vs Raster** — keeping a parallel vector state alongside a raster canvas
+- 🎭 **SVG Masks** — reproducing canvas `destination-out` eraser with `<mask>` elements
+- 📤 **SVG Serialization** — building DOM nodes with `createElementNS` and serializing with `XMLSerializer`
+- 🧩 **Non-invasive refactoring** — adding features without breaking existing architecture
 
 ---
 
 ## ⌨️ Keyboard Shortcuts
 
-| Shortcut    | Action             |
-| :---------- | :----------------- |
-| `B`         | Brush              |
-| `E`         | Eraser             |
-| `T`         | Text               |
-| `R`         | Rectangle          |
-| `C`         | Circle             |
-| `L`         | Line               |
-| `A`         | Arrow              |
-| `F`         | Fill               |
-| `M`         | Move Background    |
-| `1` – `9`   | Pick palette color |
-| `[` / `]`   | Brush size down/up |
-| `0`         | Reset background   |
-| `Shift + N` | New layer          |
-| `Shift + D` | Duplicate layer    |
-| `Esc`       | Close / cancel     |
-| `Ctrl + Z`  | Undo               |
-| `Ctrl + Y`  | Redo               |
-| `Ctrl + S`  | Save as PNG        |
+| Shortcut           | Action             |
+| :----------------- | :----------------- |
+| `B`                | Brush              |
+| `E`                | Eraser             |
+| `T`                | Text               |
+| `R`                | Rectangle          |
+| `C`                | Circle             |
+| `L`                | Line               |
+| `A`                | Arrow              |
+| `F`                | Fill               |
+| `M`                | Move Background    |
+| `1` – `9`          | Pick palette color |
+| `[` / `]`          | Brush size down/up |
+| `0`                | Reset background   |
+| `Shift + N`        | New layer          |
+| `Shift + D`        | Duplicate layer    |
+| `Esc`              | Close / cancel     |
+| `Ctrl + Z`         | Undo               |
+| `Ctrl + Y`         | Redo               |
+| `Ctrl + S`         | Save as PNG        |
+| `Ctrl + Shift + S` | Export as SVG      |
 
 ---
 
@@ -177,6 +184,8 @@ PoyberPaint/
 │   └── style.css       # Custom styles + modals + toasts
 ├── js/
 │   ├── storage.js      # LocalStorage wrapper
+│   ├── vector-store.js # Vector action tracking (for SVG export)
+│   ├── svg-export.js   # SVG serialization
 │   └── app.js          # Main logic (layers, tools, drawing)
 ├── assets/
 │   ├── favicon.svg
@@ -205,7 +214,7 @@ PoyberPaint/
 - [x] Image import with pan, zoom, resize, rotate
 - [x] Layer system
 - [x] Modals & toasts for better UX
-- [ ] Export to SVG
+- [x] Export to SVG
 - [ ] Custom canvas size
 - [ ] Gradient tool
 - [ ] Background removal

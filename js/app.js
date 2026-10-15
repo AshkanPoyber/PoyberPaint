@@ -90,6 +90,11 @@
   let rotateStart = { angle: 0, rotation: 0, centerX: 0, centerY: 0 };
   let resizeStart = { x: 0, y: 0, scale: 1, centerX: 0, centerY: 0 };
 
+  // SVG-EXPORT: state (moved up so bindDrawing can reference them safely)
+  let shapeEndPos = null;
+  let currentStroke = null;
+  let bgRecordedThisSession = false;
+
   // Pending delete layer id (for modal confirm)
   let pendingDeleteLayerId = null;
 
@@ -167,6 +172,10 @@
 
       const [removed] = this.layers.splice(idx, 1);
       removed.canvas.remove();
+      // SVG-EXPORT: drop vector actions of this layer
+      if (typeof VectorStore !== "undefined") {
+        VectorStore.dropLayer(id);
+      }
 
       if (this.activeLayerId === id) {
         const newIdx = Math.max(0, idx - 1);
@@ -239,6 +248,17 @@
       dup.history.push(
         dup.ctx.getImageData(0, 0, dup.canvas.width, dup.canvas.height),
       );
+      // SVG-EXPORT: clone vector actions to the new layer
+      if (typeof VectorStore !== "undefined") {
+        const sourceActions = VectorStore.getForLayer(id);
+        sourceActions.forEach((a) => {
+          VectorStore.push({
+            ...a,
+            id: undefined, // let VectorStore assign a new id
+            layerId: dup.id,
+          });
+        });
+      }
       return dup;
     },
 
@@ -323,6 +343,9 @@
     },
   };
 
+  // SVG-EXPORT: expose for svg-export.js & vector-store.js
+  window.LayerStore = LayerStore;
+
   function getActiveLayer() {
     return LayerStore.getActive();
   }
@@ -353,7 +376,6 @@
     settings.theme = next;
     Storage.saveSettings(settings);
 
-    // Toast on theme switch
     if (next === "dark") {
       showToast("Dark mode activated", "info");
     } else {
@@ -469,7 +491,6 @@
           return;
         }
 
-        // Open delete confirm modal
         pendingDeleteLayerId = layer.id;
         const desc = document.getElementById("deleteLayerDesc");
         if (desc) {
@@ -649,6 +670,13 @@
 
   // ---------- Clear Active Layer ----------
   function clearActiveLayer() {
+    // SVG-EXPORT: clear vector actions for this layer
+    if (typeof VectorStore !== "undefined") {
+      VectorStore.push({
+        type: "clear",
+        layerId: LayerStore.activeLayerId,
+      });
+    }
     const ctx = getActiveCtx();
     const canvas = getActiveCanvas();
     if (!ctx || !canvas) return;
@@ -691,6 +719,11 @@
       if (history.length <= 1) return;
       redoStack.push(history.pop());
       ctx.putImageData(history[history.length - 1], 0, 0);
+      // SVG-EXPORT: remove last vector action
+      if (typeof VectorStore !== "undefined") {
+        const removed = VectorStore.popLast(layer.id);
+        layer._lastUndone = removed;
+      }
       updateHistoryButtons();
       persistCanvas();
     });
@@ -703,6 +736,11 @@
       const next = redoStack.pop();
       history.push(next);
       ctx.putImageData(next, 0, 0);
+      // SVG-EXPORT: restore the undone vector action
+      if (typeof VectorStore !== "undefined" && layer._lastUndone) {
+        VectorStore.restore(layer._lastUndone);
+        layer._lastUndone = null;
+      }
       updateHistoryButtons();
       persistCanvas();
     });
@@ -738,6 +776,7 @@
         Math.abs(h),
       );
     }
+    // NOTE: vector recording happens once in commitVectorAction()
   }
 
   function drawCircle(x, y) {
@@ -747,6 +786,7 @@
     ctx.beginPath();
     ctx.arc(startX, startY, r, 0, Math.PI * 2);
     fillColor.checked ? ctx.fill() : ctx.stroke();
+    // NOTE: vector recording happens once in commitVectorAction()
   }
 
   function drawTriangle(x, y) {
@@ -758,6 +798,7 @@
     ctx.lineTo(startX * 2 - x, y);
     ctx.closePath();
     fillColor.checked ? ctx.fill() : ctx.stroke();
+    // NOTE: vector recording happens once in commitVectorAction()
   }
 
   function drawLine(x, y) {
@@ -767,6 +808,7 @@
     ctx.moveTo(startX, startY);
     ctx.lineTo(x, y);
     ctx.stroke();
+    // NOTE: vector recording happens once in commitVectorAction()
   }
 
   function drawArrow(x, y) {
@@ -792,6 +834,7 @@
       y - headLength * Math.sin(angle + Math.PI / 7),
     );
     ctx.stroke();
+    // NOTE: vector recording happens once in commitVectorAction()
   }
 
   // ---------- Text Tool ----------
@@ -849,6 +892,18 @@
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(text, x, y);
+    // SVG-EXPORT: record text
+    if (typeof VectorStore !== "undefined") {
+      VectorStore.push({
+        type: "text",
+        layerId: LayerStore.activeLayerId,
+        x,
+        y,
+        content: text,
+        fontSize,
+        color: selectedColor,
+      });
+    }
     pushHistory();
   }
 
@@ -957,6 +1012,7 @@
     }
 
     setImportLoading(true);
+    bgRecordedThisSession = false; // allow recording the new image
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -1013,6 +1069,23 @@
       bgOverlay.classList.add("hidden");
       return;
     }
+
+    // SVG-EXPORT: record background once (avoid double-push)
+    bgLayer.onload = () => {
+      applyBgTransform(); // re-apply after dimensions are known
+      if (typeof VectorStore !== "undefined" && !bgRecordedThisSession) {
+        bgRecordedThisSession = true;
+        VectorStore.push({
+          type: "bg",
+          layerId: LayerStore.activeLayerId,
+          dataURL,
+          transform: { ...bgTransform },
+          naturalWidth: bgLayer.naturalWidth,
+          naturalHeight: bgLayer.naturalHeight,
+        });
+      }
+    };
+
     bgLayer.src = dataURL;
     bgLayer.classList.remove("hidden");
     applyBgTransform();
@@ -1022,6 +1095,13 @@
     bgLayer.style.transform = `translate(${bgTransform.x}px, ${bgTransform.y}px) scale(${bgTransform.scale * bgTransform.flipH}, ${bgTransform.scale * bgTransform.flipV}) rotate(${bgTransform.rotation}deg)`;
     Storage.saveBgTransform(bgTransform);
     updateBgOverlay();
+
+    // SVG-EXPORT: update the latest bg action's transform
+    if (typeof VectorStore !== "undefined") {
+      const all = VectorStore.getAll();
+      const lastBg = [...all].reverse().find((a) => a.type === "bg");
+      if (lastBg) lastBg.transform = { ...bgTransform };
+    }
   }
 
   // ---------- Overlay ----------
@@ -1240,10 +1320,20 @@
 
   function removeBackground() {
     backgroundDataURL = null;
+    bgRecordedThisSession = false;
     Storage.clearBackground();
     Storage.clearBgTransform();
     resetBgTransform();
     applyBackgroundToLayer(null);
+
+    // SVG-EXPORT: drop any bg actions
+    if (typeof VectorStore !== "undefined") {
+      VectorStore.push({
+        type: "clear",
+        layerId: LayerStore.activeLayerId,
+      });
+    }
+
     clearBgBtn.classList.add("hidden");
     bgControls.classList.add("hidden");
     bgOverlay.classList.add("hidden");
@@ -1276,6 +1366,14 @@
         const { x, y } = getPos(e);
         floodFill(x, y, selectedColor);
         pushHistory();
+        // SVG-EXPORT: mark as unsupported for vector export
+        if (typeof VectorStore !== "undefined") {
+          VectorStore.push({
+            type: "unsupported",
+            layerId: LayerStore.activeLayerId,
+            kind: "flood-fill",
+          });
+        }
         return;
       }
 
@@ -1284,6 +1382,12 @@
       const { x, y } = getPos(e);
       startX = x;
       startY = y;
+
+      // SVG-EXPORT: start a new vector stroke
+      currentStroke = {
+        points: [{ x, y }],
+      };
+      shapeEndPos = { x, y };
 
       const ctx = getActiveCtx();
       ctx.lineWidth = brushWidth;
@@ -1332,6 +1436,8 @@
       if (!ctx || !canvas) return;
 
       const { x, y } = getPos(e);
+      // SVG-EXPORT: remember last pointer position (for shape endpoints)
+      shapeEndPos = { x, y };
       ctx.putImageData(snapshot, 0, 0);
 
       if (selectedTool === "brush" || selectedTool === "eraser") {
@@ -1342,6 +1448,10 @@
         startX = x;
         startY = y;
         snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        // SVG-EXPORT: record this segment
+        if (currentStroke) {
+          currentStroke.points.push({ x, y });
+        }
       } else if (selectedTool === "rectangle") {
         drawRect(x, y);
       } else if (selectedTool === "circle") {
@@ -1375,12 +1485,126 @@
       const ctx = getActiveCtx();
       if (ctx) ctx.globalCompositeOperation = "source-over";
 
+      // SVG-EXPORT: commit vector action based on current tool
+      commitVectorAction();
+
       pushHistory();
     };
 
     layerStack.addEventListener("pointerup", endDraw);
     layerStack.addEventListener("pointercancel", endDraw);
     layerStack.addEventListener("pointerleave", endDraw);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  SVG-EXPORT: Vector action tracking
+  //  (called ONCE per stroke, from endDraw)
+  // ═══════════════════════════════════════════════════════
+  function commitVectorAction() {
+    if (typeof VectorStore === "undefined") {
+      currentStroke = null;
+      shapeEndPos = null;
+      return;
+    }
+    const layer = LayerStore.getActive();
+    if (!layer) {
+      currentStroke = null;
+      shapeEndPos = null;
+      return;
+    }
+
+    const layerId = layer.id;
+    const tool = selectedTool;
+
+    // ── Brush / Eraser ──────────────────────────
+    if (tool === "brush" || tool === "eraser") {
+      if (currentStroke && currentStroke.points.length >= 1) {
+        VectorStore.push({
+          type: tool,
+          layerId,
+          points: currentStroke.points,
+          color: tool === "brush" ? selectedColor : undefined,
+          width: brushWidth,
+        });
+      }
+      currentStroke = null;
+      shapeEndPos = null;
+      return;
+    }
+
+    // ── Shapes ──────────────────────────────────
+    const end = shapeEndPos;
+    if (!end) {
+      currentStroke = null;
+      return;
+    }
+
+    const { x, y } = end;
+
+    if (tool === "rectangle") {
+      VectorStore.push({
+        type: "rect",
+        layerId,
+        x: Math.min(x, startX),
+        y: Math.min(y, startY),
+        w: Math.abs(startX - x),
+        h: Math.abs(startY - y),
+        color: selectedColor,
+        width: brushWidth,
+        filled: fillColor.checked,
+      });
+    } else if (tool === "circle") {
+      const r = Math.hypot(startX - x, startY - y);
+      VectorStore.push({
+        type: "circle",
+        layerId,
+        cx: startX,
+        cy: startY,
+        r,
+        color: selectedColor,
+        width: brushWidth,
+        filled: fillColor.checked,
+      });
+    } else if (tool === "triangle") {
+      VectorStore.push({
+        type: "triangle",
+        layerId,
+        x1: startX,
+        y1: startY,
+        x2: x,
+        y2: y,
+        x3: startX * 2 - x,
+        y3: y,
+        color: selectedColor,
+        width: brushWidth,
+        filled: fillColor.checked,
+      });
+    } else if (tool === "line") {
+      VectorStore.push({
+        type: "line",
+        layerId,
+        x1: startX,
+        y1: startY,
+        x2: x,
+        y2: y,
+        color: selectedColor,
+        width: brushWidth,
+      });
+    } else if (tool === "arrow") {
+      VectorStore.push({
+        type: "arrow",
+        layerId,
+        x1: startX,
+        y1: startY,
+        x2: x,
+        y2: y,
+        color: selectedColor,
+        width: brushWidth,
+      });
+    }
+
+    shapeEndPos = null;
+    currentStroke = null;
   }
 
   // ---------- Save Image ----------
@@ -1477,6 +1701,52 @@
     }
   }
 
+  function confirmSvgExport() {
+    const input = document.getElementById("svgNameInput");
+    const rawName = (input.value || "").trim();
+    const safeName =
+      (rawName || "poyberpaint")
+        .replace(/[^a-z0-9\-_\.]/gi, "-")
+        .slice(0, 60) || "poyberpaint";
+
+    if (typeof SvgExport === "undefined") {
+      showToast("SVG export module not loaded", "error");
+      closeModal("svgModal");
+      return;
+    }
+
+    const { text, warnings } = SvgExport.exportString();
+
+    if (!text) {
+      const msg = warnings?.[0] || "Nothing to export yet";
+      showToast(msg, "error");
+      closeModal("svgModal");
+      return;
+    }
+
+    try {
+      const blob = new Blob([text], { type: "image/svg+xml" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.download = `${safeName}.svg`;
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      closeModal("svgModal");
+
+      if (warnings && warnings.length > 0) {
+        showToast(`Exported with ${warnings.length} warning(s)`, "info");
+      } else {
+        showToast(`Exported as "${safeName}.svg"`, "success");
+      }
+    } catch (e) {
+      console.error(e);
+      closeModal("svgModal");
+      showToast("Failed to export SVG", "error");
+    }
+  }
+
   // ---------- Reset ----------
   function openResetModal() {
     openModal("resetModal");
@@ -1488,6 +1758,10 @@
     Storage.clearBackground();
     Storage.clearBgTransform();
     localStorage.removeItem("poyberpaint:layers");
+    // SVG-EXPORT: clear vector store too
+    if (typeof VectorStore !== "undefined") {
+      VectorStore.clearAll();
+    }
     closeModal("resetModal");
     showToast("Everything reset. Reloading…", "info", 1200);
     setTimeout(() => location.reload(), 700);
@@ -1600,6 +1874,45 @@
     document
       .getElementById("deleteLayerConfirmBtn")
       .addEventListener("click", confirmDeleteLayer);
+
+    // SVG-EXPORT: bind export button & modal
+    const exportSvgBtn = document.getElementById("exportSvg");
+    const svgConfirmBtn = document.getElementById("svgConfirmBtn");
+    const svgNameInput = document.getElementById("svgNameInput");
+
+    exportSvgBtn?.addEventListener("click", () => {
+      const today = new Date();
+      const defaultName = `poyberpaint-${today.toISOString().slice(0, 10)}`;
+      svgNameInput.value = defaultName;
+
+      // Show warnings if any
+      const warningsBox = document.getElementById("svgWarnings");
+      warningsBox.classList.add("hidden");
+      warningsBox.innerHTML = "";
+
+      if (typeof SvgExport !== "undefined") {
+        const { warnings } = SvgExport.build();
+        if (warnings && warnings.length > 0) {
+          warningsBox.innerHTML =
+            "<ul>" + warnings.map((w) => `<li>${w}</li>`).join("") + "</ul>";
+          warningsBox.classList.remove("hidden");
+        }
+      }
+
+      openModal("svgModal");
+      setTimeout(() => {
+        svgNameInput.focus();
+        svgNameInput.select();
+      }, 120);
+    });
+
+    svgConfirmBtn?.addEventListener("click", confirmSvgExport);
+    svgNameInput?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        confirmSvgExport();
+      }
+    });
   }
 
   // ---------- Keyboard ----------
@@ -1628,6 +1941,11 @@
         if (k === "y" || (k === "z" && e.shiftKey)) {
           e.preventDefault();
           redoBtn.click();
+          return;
+        }
+        if (k === "s" && e.shiftKey) {
+          e.preventDefault();
+          document.getElementById("exportSvg")?.click();
           return;
         }
         if (k === "s") {
@@ -1823,8 +2141,9 @@
 
     const bgData = Storage.loadBackground();
     if (bgData) {
-      applyBackgroundToLayer(bgData);
       backgroundDataURL = bgData;
+      bgRecordedThisSession = false; // force a push on first load
+      applyBackgroundToLayer(bgData);
       clearBgBtn.classList.remove("hidden");
       bgControls.classList.remove("hidden");
       loadBgTransform();
