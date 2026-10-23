@@ -1829,19 +1829,43 @@
       return;
     }
 
-    try {
-      const link = document.createElement("a");
-      link.download = `${safeName}.png`;
-      link.href = exportCanvas.toDataURL("image/png");
-      link.click();
+    // METADATA: use toBlob so we can embed PoyberPaint info in the PNG
+    exportCanvas.toBlob(async (blob) => {
+      if (!blob) {
+        closeModal("saveModal");
+        showToast("Failed to save image", "error");
+        return;
+      }
 
-      closeModal("saveModal");
-      showToast(`Saved as "${safeName}.png"`, "success");
-    } catch (e) {
-      console.error(e);
-      closeModal("saveModal");
-      showToast("Failed to save image", "error");
-    }
+      let finalBlob = blob;
+
+      if (typeof Metadata !== "undefined") {
+        try {
+          finalBlob = await Metadata.embedInPng(
+            blob,
+            Metadata.buildFields(),
+          );
+        } catch (metaErr) {
+          console.warn("Metadata embed failed:", metaErr);
+        }
+      }
+
+      try {
+        const url = URL.createObjectURL(finalBlob);
+        const link = document.createElement("a");
+        link.download = `${safeName}.png`;
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+
+        closeModal("saveModal");
+        showToast(`Saved as "${safeName}.png"`, "success");
+      } catch (e) {
+        console.error(e);
+        closeModal("saveModal");
+        showToast("Failed to save image", "error");
+      }
+    }, "image/png");
   }
 
   function confirmSvgExport() {
@@ -1858,13 +1882,30 @@
       return;
     }
 
-    const { text, warnings } = SvgExport.exportString();
+    const { text: rawText, warnings } = SvgExport.exportString();
 
-    if (!text) {
+    if (!rawText) {
       const msg = warnings?.[0] || "Nothing to export yet";
       showToast(msg, "error");
       closeModal("svgModal");
       return;
+    }
+
+    // METADATA: inject PoyberPaint <metadata> into the SVG
+    let text = rawText;
+    if (typeof Metadata !== "undefined") {
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(rawText, "image/svg+xml");
+        const svgEl = doc.documentElement;
+        Metadata.injectIntoSvg(svgEl);
+        text = new XMLSerializer().serializeToString(svgEl);
+        if (!text.startsWith("<?xml")) {
+          text = '<?xml version="1.0" encoding="UTF-8"?>\n' + text;
+        }
+      } catch (metaErr) {
+        console.warn("SVG metadata inject failed:", metaErr);
+      }
     }
 
     try {

@@ -61,6 +61,7 @@ Draw. Sketch. Create.
 - 💾 **Export PNG** — merges all visible layers, `Ctrl+S`
 - 🎯 **Export SVG** — true vector output (paths, shapes, text, masks) `Ctrl+Shift+S`
 - 🔍 **Zoom & Pan** — `Ctrl+Scroll` to zoom, `Space+Drag` to pan
+- 🏷️ **Metadata in exports** — every PNG/SVG carries PoyberPaint's signature
 - 🌗 **Light / Dark theme** — auto-saved and switchable
 - 📱 **Fully responsive** — desktop, tablet, mobile
 - 🖱️ **Pointer Events** — mouse, touch, and stylus
@@ -126,6 +127,8 @@ Building PoyberPaint helped me practice:
 - 🧩 **Non-invasive refactoring** — adding features without breaking existing architecture
 - 🔍 **Virtual camera** — CSS-transform-based zoom & pan that keeps canvas coordinates in sync
 - 🖱️ **Coordinate spaces** — converting between screen, layout, and transformed space with `getBoundingClientRect` + `offsetWidth`
+- 🏷️ **Binary formats** — reading and writing PNG `tEXt` chunks with CRC-32 checksums
+- 🔁 **SVG round-trips** — re-serializing SVG via `DOMParser` / `XMLSerializer` without breaking namespaces
 
 ---
 

@@ -16,6 +16,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.4.0] - 2026-10-23
+
+### Added
+
+- 🏷️ **Metadata in exports** — PoyberPaint now embeds its signature into every exported file
+  - **PNG**: `tEXt` chunks with `Software`, `Author`, `Website`, `Created`, `Generator`
+  - **SVG**: `<metadata data-poyberpaint="true">` element at the top of the file
+- 🧭 **`js/metadata.js`** — standalone module for embedding/reading metadata (no dependencies)
+- 🕒 **Per-export timestamp** — every file gets an ISO 8601 `Created` field
+
+### Changed
+
+- 💾 **PNG export** now uses `toBlob()` + manual chunk injection instead of `toDataURL()`, so metadata can be added without touching the canvas
+- 📤 **SVG export** re-serializes the SVG via `DOMParser` + `XMLSerializer` to inject `<metadata>` cleanly
+
+### Notes
+
+- Metadata is **fallback-safe**: if injection fails, the original file is still exported (with a `console.warn`)
+- Existing PNG/SVG viewers (Finder, Preview, Photoshop, Figma, ExifTool) will show the new fields
+- SVG re-exports replace previous metadata (no duplication)
+
+---
+
 ## [2.3.0] - 2026-10-15
 
 ### Added
