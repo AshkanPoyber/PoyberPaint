@@ -230,6 +230,7 @@ PoyberPaint/
 - [x] Modals & toasts for better UX
 - [x] Export to SVG
 - [x] Zoom & Pan
+- [x] Export Metadata
 - [ ] Shape selection & transform
 - [ ] Custom canvas size
 - [ ] Gradient tool
