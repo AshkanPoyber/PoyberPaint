@@ -60,6 +60,7 @@ Draw. Sketch. Create.
 - ↩️ **Undo / Redo** — per-layer, with `Ctrl+Z` / `Ctrl+Y`
 - 💾 **Export PNG** — merges all visible layers, `Ctrl+S`
 - 🎯 **Export SVG** — true vector output (paths, shapes, text, masks) `Ctrl+Shift+S`
+- 🎯 **Shape Selection** — click any shape to select, move, resize, or recolor it
 - 🔍 **Zoom & Pan** — `Ctrl+Scroll` to zoom, `Space+Drag` to pan
 - 🏷️ **Metadata in exports** — every PNG/SVG carries PoyberPaint's signature
 - 🌗 **Light / Dark theme** — auto-saved and switchable
@@ -129,6 +130,9 @@ Building PoyberPaint helped me practice:
 - 🖱️ **Coordinate spaces** — converting between screen, layout, and transformed space with `getBoundingClientRect` + `offsetWidth`
 - 🏷️ **Binary formats** — reading and writing PNG `tEXt` chunks with CRC-32 checksums
 - 🔁 **SVG round-trips** — re-serializing SVG via `DOMParser` / `XMLSerializer` without breaking namespaces
+- 🎯 **Hit testing** — point-in-rect, point-in-circle, point-in-triangle, point-to-segment
+- 🎨 **Vector-first transforms** — mutating action objects and rebuilding the canvas from the vector store
+- 📐 **Resize math** — opposite-corner anchoring, per-shape logic, and aspect-ratio locking
 
 ---
 
@@ -163,6 +167,13 @@ Building PoyberPaint helped me practice:
 | `Space + Drag`     | Pan canvas         |
 | `Middle + Drag`    | Pan canvas         |
 | `Shift + Scroll`   | Pan horizontally   |
+| `V`                | Select tool        |
+| `Delete`           | Delete selected    |
+| `Backspace`        | Delete selected    |
+| `Ctrl + C`         | Copy selection     |
+| `Ctrl + V`         | Paste selection    |
+| `Ctrl + D`         | Duplicate          |
+| `Esc`              | Clear selection    |
 
 ---
 
@@ -231,7 +242,7 @@ PoyberPaint/
 - [x] Export to SVG
 - [x] Zoom & Pan
 - [x] Export Metadata
-- [ ] Shape selection & transform
+- [x] Shape selection & transform
 - [ ] Custom canvas size
 - [ ] Gradient tool
 - [ ] Background removal

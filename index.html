@@ -296,6 +296,25 @@
             </h2>
             <div class="grid grid-cols-5 lg:grid-cols-2 gap-1.5 mb-3">
               <button
+                data-tool="select"
+                class="tool-btn group relative flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
+                  <path d="M13 13l6 6" />
+                </svg>
+                <span class="text-[10px]">Select</span>
+                <kbd class="kbd-hint">V</kbd>
+              </button>
+              <button
                 data-tool="brush"
                 class="tool-btn active group relative flex flex-col items-center gap-1 py-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-slate-200 transition"
               >
@@ -880,6 +899,11 @@
                   />
                 </svg>
                 <div id="layerStack" class="relative w-full h-full"></div>
+                <svg
+                  id="selectionOverlay"
+                  class="absolute inset-0 w-full h-full pointer-events-none"
+                  xmlns="http://www.w3.org/2000/svg"
+                ></svg>
               </div>
             </div>
           </div>
@@ -1099,6 +1123,9 @@
 
         <h4 class="help-section-title">Tools</h4>
         <div class="help-grid">
+          <div class="help-row">
+            <kbd class="kbd">V</kbd><span>Select</span>
+          </div>
           <div class="help-row"><kbd class="kbd">B</kbd><span>Brush</span></div>
           <div class="help-row">
             <kbd class="kbd">E</kbd><span>Eraser</span>
@@ -1183,6 +1210,33 @@
             <kbd class="kbd">Shift+Scroll</kbd><span>Pan horizontally</span>
           </div>
         </div>
+        <h4 class="help-section-title">Selection &amp; Edit</h4>
+        <div class="help-grid">
+          <div class="help-row">
+            <kbd class="kbd">V</kbd><span>Select tool</span>
+          </div>
+          <div class="help-row">
+            <kbd class="kbd">Click</kbd><span>Select shape</span>
+          </div>
+          <div class="help-row">
+            <kbd class="kbd">Drag</kbd><span>Move shape</span>
+          </div>
+          <div class="help-row">
+            <kbd class="kbd">Shift+Drag</kbd><span>Lock aspect ratio</span>
+          </div>
+          <div class="help-row">
+            <kbd class="kbd">Delete</kbd><span>Remove shape</span>
+          </div>
+          <div class="help-row">
+            <kbd class="kbd">Ctrl+D</kbd><span>Duplicate</span>
+          </div>
+          <div class="help-row">
+            <kbd class="kbd">Ctrl+C</kbd><span>Copy</span>
+          </div>
+          <div class="help-row">
+            <kbd class="kbd">Ctrl+V</kbd><span>Paste</span>
+          </div>
+        </div>
 
         <div class="modal-actions">
           <button
@@ -1203,6 +1257,9 @@
     <script src="js/vector-store.js"></script>
     <script src="js/svg-export.js"></script>
     <script src="js/metadata.js"></script>
+    <script src="js/selection.js"></script>
+    <script src="js/selection-render.js"></script>
+    <script src="js/selection-transform.js"></script>
     <script src="js/app.js"></script>
   </body>
 </html>

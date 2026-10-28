@@ -1,6 +1,6 @@
 {
   "name": "poyberpaint",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "A modern, lightweight paint & drawing web app built with vanilla JavaScript and TailwindCSS.",
   "keywords": [
     "paint",

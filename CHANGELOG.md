@@ -9,10 +9,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
-- Shape selection & transform
+- Rotate selected shapes
 - Custom canvas size
 - Gradient tool
 - Background removal
+
+---
+
+## [2.5.0] - 2026-10-28
+
+### Added
+
+- 🎯 **Shape Selection** — click any shape with the Select tool (`V`) to select it
+- 🖱️ **Move** — drag any selected shape to reposition it
+- 📐 **Resize** — 8 handles (corners + midpoints); hold `Shift` to lock aspect ratio
+- 🗑️ **Delete** — `Delete` / `Backspace` removes the selected shape
+- 📋 **Duplicate** — `Ctrl+D` duplicates the selected shape (offset by 16px)
+- 📄 **Copy / Paste** — `Ctrl+C` / `Ctrl+V` with a persistent internal clipboard
+- 🎨 **Recolor** — click any palette swatch to recolor the selected shape
+- 🚪 **Escape** — clears the selection
+- 🔍 **Selection overlay** — blue dashed outline + 8 resize handles + rotate handle (visual only for now)
+- ⌨️ **`V` shortcut** — switch to Select tool
+
+### Changed
+
+- 🧭 Drawing behavior is unchanged — Select is opt-in via the new tool
+- 🔄 Layer switching now clears the selection automatically
+- 🎨 `getBBox()` helper (in `selection-render.js`) powers the overlay for all 6 shape types
+
+### Fixed
+
+- `Ctrl+C` / `Ctrl+V` handlers referenced `k` before it was declared
+- `Ctrl+D` triggered the browser's bookmark dialog because the keydown listener crashed
+
+### Internal
+
+- 📦 **`js/selection.js`** — selection state + hit-testing for 6 shape types
+- 📦 **`js/selection-render.js`** — SVG overlay renderer (outline, handles, rotate)
+- 📦 **`js/selection-transform.js`** — move + resize math, with per-shape logic
+- 🔧 `VectorStore.getById()` and `VectorStore.removeAction()` added
+- 🔧 `redrawLayer()` + `drawActionOnCanvas()` in `app.js` (rebuild canvas from vector actions)
+
+### Notes
+
+- **Rotate is not yet implemented** — the rotate handle is visible but inactive. Coming in `v2.6.0`.
+- **Line and arrow** are selectable and movable, but not resizable (resize semantics are ambiguous).
+- **Brush and eraser strokes** are not selectable (points-heavy; planned for a future release).
+- **Only the active layer** can be selected from — switch layers to edit their shapes.
+- Selection overlay respects zoom & pan; handles stay crisp via `vector-effect: non-scaling-stroke`.
 
 ---
 

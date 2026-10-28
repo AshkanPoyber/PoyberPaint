@@ -1,7 +1,7 @@
 /**
  * PoyberPaint — A Modern Paint & Drawing Web App.
  * @author AshkanPoyber
- * @version 2.2.0
+ * @version 2.5.0
  */
 
 (() => {
@@ -22,6 +22,7 @@
   const canvasWrapper = document.getElementById("canvasWrapper");
   const canvasViewport = document.getElementById("canvasViewport");
   const canvasWorld = document.getElementById("canvasWorld");
+  const selectionOverlay = document.getElementById("selectionOverlay");
   const bgUpload = document.getElementById("bgUpload");
   const importLabel = document.getElementById("importLabel");
   const importText = document.getElementById("importText");
@@ -62,6 +63,7 @@
   const SNAP_THRESHOLD = 15;
 
   const TOOL_KEYS = {
+    v: "select",
     b: "brush",
     e: "eraser",
     t: "text",
@@ -112,6 +114,12 @@
 
   // Pending delete layer id (for modal confirm)
   let pendingDeleteLayerId = null;
+  // FÁZ 3: selection move state
+  let isMovingSelection = false;
+  // FÁZ 4a: selection resize state
+  let isResizingSelection = false;
+  // FÁZ 5: internal clipboard
+  let clipboardAction = null;
 
   // ═══════════════════════════════════════════════════════
   //  LAYER STORE
@@ -206,6 +214,14 @@
     setActive(id) {
       if (!this.getById(id)) return;
       if (this.activeLayerId === id) return;
+
+      // FÁZ 5: clear selection when switching layers
+      if (typeof Selection !== "undefined") {
+        Selection.clear();
+        if (typeof SelectionRender !== "undefined") {
+          SelectionRender.clear();
+        }
+      }
 
       this.activeLayerId = id;
       this.layers.forEach((l) => {
@@ -614,6 +630,130 @@
     updateBgOverlay();
   }
 
+  // ---------- Layer Redraw (used by Selection) ----------
+  /**
+   * Redraw all vector actions of a layer onto its canvas.
+   * Used after a selection transform.
+   *
+   * @param {string} layerId
+   */
+  function redrawLayer(layerId) {
+    const layer = LayerStore.getById(layerId);
+    if (!layer) return;
+
+    const { ctx, canvas } = layer;
+
+    // Clear
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+
+    if (typeof VectorStore === "undefined") return;
+
+    const actions = VectorStore.getForLayer(layerId);
+    if (!actions || actions.length === 0) return;
+
+    // Re-apply DPR + set up stroke style
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    for (const action of actions) {
+      drawActionOnCanvas(ctx, action);
+    }
+  }
+
+  /**
+   * Draw a single action onto a canvas context.
+   * (Mirrors the logic in SvgExport but for Canvas 2D.)
+   *
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Object} action
+   */
+  function drawActionOnCanvas(ctx, action) {
+    if (!action) return;
+    const type = action.type;
+
+    if (type === "brush" || type === "eraser") {
+      if (!action.points || action.points.length === 0) return;
+
+      if (type === "eraser") {
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.strokeStyle = "rgba(0,0,0,1)";
+      } else {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.strokeStyle = action.color || "#000";
+      }
+      ctx.lineWidth = action.width || 1;
+      ctx.beginPath();
+      const pts = action.points;
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) {
+        ctx.lineTo(pts[i].x, pts[i].y);
+      }
+      ctx.stroke();
+      ctx.globalCompositeOperation = "source-over";
+      return;
+    }
+
+    ctx.globalCompositeOperation = "source-over";
+    ctx.lineWidth = action.width || 1;
+    ctx.strokeStyle = action.color || "#000";
+    ctx.fillStyle = action.color || "#000";
+
+    if (type === "rect") {
+      if (action.filled) {
+        ctx.fillRect(action.x, action.y, action.w, action.h);
+      } else {
+        ctx.strokeRect(action.x, action.y, action.w, action.h);
+      }
+    } else if (type === "circle") {
+      ctx.beginPath();
+      ctx.arc(action.cx, action.cy, action.r, 0, Math.PI * 2);
+      action.filled ? ctx.fill() : ctx.stroke();
+    } else if (type === "triangle") {
+      ctx.beginPath();
+      ctx.moveTo(action.x1, action.y1);
+      ctx.lineTo(action.x2, action.y2);
+      ctx.lineTo(action.x3, action.y3);
+      ctx.closePath();
+      action.filled ? ctx.fill() : ctx.stroke();
+    } else if (type === "line") {
+      ctx.beginPath();
+      ctx.moveTo(action.x1, action.y1);
+      ctx.lineTo(action.x2, action.y2);
+      ctx.stroke();
+    } else if (type === "arrow") {
+      ctx.beginPath();
+      ctx.moveTo(action.x1, action.y1);
+      ctx.lineTo(action.x2, action.y2);
+      ctx.stroke();
+
+      const headLength = Math.max(12, (action.width || 1) * 2.5);
+      const angle = Math.atan2(action.y2 - action.y1, action.x2 - action.x1);
+      ctx.beginPath();
+      ctx.moveTo(action.x2, action.y2);
+      ctx.lineTo(
+        action.x2 - headLength * Math.cos(angle - Math.PI / 7),
+        action.y2 - headLength * Math.sin(angle - Math.PI / 7),
+      );
+      ctx.moveTo(action.x2, action.y2);
+      ctx.lineTo(
+        action.x2 - headLength * Math.cos(angle + Math.PI / 7),
+        action.y2 - headLength * Math.sin(angle + Math.PI / 7),
+      );
+      ctx.stroke();
+    } else if (type === "text") {
+      const fontSize = action.fontSize || 14;
+      ctx.font = `500 ${fontSize}px "JetBrains Mono", monospace`;
+      ctx.fillStyle = action.color || "#000";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.fillText(action.content || "", action.x, action.y);
+    }
+  }
+
   // ---------- Colors UI ----------
   function buildColorSwatches() {
     PALETTE.forEach((c, i) => {
@@ -645,6 +785,28 @@
       b.classList.add("selected");
       selectedColor = b.dataset.color;
       persistSettings();
+
+      // FÁZ 5: if a shape is selected, recolor it
+      if (Selection.hasSelection()) {
+        const { action, layerId } = Selection.getState();
+        if (action && action.type !== "line" && action.type !== "arrow") {
+          // For most shapes, `color` is the fill/stroke
+          action.color = selectedColor;
+          redrawLayer(layerId);
+          pushHistory();
+          if (typeof SelectionRender !== "undefined") {
+            SelectionRender.refresh();
+          }
+        } else if (action) {
+          // line / arrow also have `color`
+          action.color = selectedColor;
+          redrawLayer(layerId);
+          pushHistory();
+          if (typeof SelectionRender !== "undefined") {
+            SelectionRender.refresh();
+          }
+        }
+      }
     });
 
     picker.addEventListener("input", () => {
@@ -661,7 +823,9 @@
     toolBtns.forEach((btn) =>
       btn.addEventListener("click", () => {
         if (textInputEl) closeTextInput();
-        document.querySelector(".tool-btn.active")?.classList.remove("active");
+        document
+          .querySelectorAll(".tool-btn.active")
+          .forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
         selectedTool = btn.dataset.tool;
 
@@ -803,6 +967,11 @@
 
     updateZoomLabel();
     updateBgOverlay(); // overlay handles are in world coords, so they scale with us
+
+    // FÁZ 2: keep the selection overlay crisp when zoom/pan changes
+    if (typeof SelectionRender !== "undefined") {
+      SelectionRender.refresh();
+    }
   }
 
   /**
@@ -1488,6 +1657,44 @@
       const canvas = getActiveCanvas();
       if (!canvas) return;
 
+      // SELECT tool — must come BEFORE move-bg
+      if (selectedTool === "select") {
+        e.preventDefault();
+        const { x, y } = getPos(e);
+        const layer = LayerStore.getActive();
+        if (!layer) return;
+
+        // If something is already selected and the click is inside it,
+        // start a MOVE (drag).
+        if (Selection.hasSelection()) {
+          const current = Selection.getState().action;
+          if (current && Selection.hitTest(current, x, y)) {
+            // Start a move operation
+            if (typeof SelectionTransform !== "undefined") {
+              SelectionTransform.startMove(current, { x, y });
+              isMovingSelection = true;
+              canvas.setPointerCapture(e.pointerId);
+            }
+            return;
+          }
+        }
+
+        // Otherwise — pick a new shape (or clear)
+        const actions = VectorStore.getForLayer(layer.id);
+        const hit = Selection.findActionAt(actions, x, y);
+
+        if (hit) {
+          Selection.set(hit);
+        } else {
+          Selection.clear();
+        }
+        if (typeof SelectionRender !== "undefined") {
+          SelectionRender.refresh();
+        }
+        return;
+      }
+
+      // MOVE-BG tool
       if (selectedTool === "move-bg") {
         if (!backgroundDataURL) return;
         e.preventDefault();
@@ -1573,6 +1780,28 @@
         return;
       }
 
+      // FÁZ 3: MOVE selected shape
+      if (isMovingSelection && Selection.hasSelection()) {
+        e.preventDefault();
+        const pos = getPos(e);
+        const action = Selection.getState().action;
+        const layerId = Selection.getState().layerId;
+
+        if (
+          action &&
+          typeof SelectionTransform !== "undefined" &&
+          SelectionTransform.applyMove(action, pos)
+        ) {
+          // Redraw the layer so the shape follows the mouse
+          redrawLayer(layerId);
+          // Refresh the selection overlay
+          if (typeof SelectionRender !== "undefined") {
+            SelectionRender.refresh();
+          }
+        }
+        return;
+      }
+
       if (!isDrawing) return;
       const ctx = getActiveCtx();
       const canvas = getActiveCanvas();
@@ -1620,6 +1849,23 @@
       }
       if (isResizingBg) {
         isResizingBg = false;
+        return;
+      }
+      // FÁZ 3: finish moving a selection
+      if (isMovingSelection) {
+        isMovingSelection = false;
+
+        if (
+          typeof SelectionTransform !== "undefined" &&
+          SelectionTransform.didMove()
+        ) {
+          // Persist the change
+          pushHistory();
+          if (typeof SelectionRender !== "undefined") {
+            SelectionRender.refresh();
+          }
+        }
+        SelectionTransform.finish();
         return;
       }
       if (!isDrawing) return;
@@ -1841,10 +2087,7 @@
 
       if (typeof Metadata !== "undefined") {
         try {
-          finalBlob = await Metadata.embedInPng(
-            blob,
-            Metadata.buildFields(),
-          );
+          finalBlob = await Metadata.embedInPng(blob, Metadata.buildFields());
         } catch (metaErr) {
           console.warn("Metadata embed failed:", metaErr);
         }
@@ -2218,6 +2461,184 @@
     });
   }
 
+  // ═══════════════════════════════════════════════════════
+  //  FÁZ 4a: Selection resize handles
+  // ═══════════════════════════════════════════════════════
+  function bindSelectionHandles() {
+    if (!selectionOverlay) return;
+
+    selectionOverlay.addEventListener("pointerdown", (e) => {
+      const target = e.target.closest("[data-handle]");
+      if (!target) return;
+      if (!Selection.hasSelection()) return;
+
+      const handle = target.getAttribute("data-handle");
+      if (!handle || handle === "rotate") return; // rotate = FÁZ 4b
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const pos = getPos(e);
+      const action = Selection.getState().action;
+      if (!action) return;
+
+      if (typeof SelectionTransform !== "undefined") {
+        SelectionTransform.startResize(action, pos, handle, e.shiftKey);
+        isResizingSelection = true;
+        selectionOverlay.setPointerCapture(e.pointerId);
+      }
+    });
+
+    selectionOverlay.addEventListener("pointermove", (e) => {
+      if (!isResizingSelection) return;
+      e.preventDefault();
+
+      const pos = getPos(e);
+      const action = Selection.getState().action;
+      const layerId = Selection.getState().layerId;
+      if (!action) return;
+
+      if (
+        typeof SelectionTransform !== "undefined" &&
+        SelectionTransform.applyResize(action, pos, e.shiftKey)
+      ) {
+        redrawLayer(layerId);
+        if (typeof SelectionRender !== "undefined") {
+          SelectionRender.refresh();
+        }
+      }
+    });
+
+    const endResize = (e) => {
+      if (!isResizingSelection) return;
+      isResizingSelection = false;
+
+      if (
+        typeof SelectionTransform !== "undefined" &&
+        SelectionTransform.didMove()
+      ) {
+        pushHistory();
+        if (typeof SelectionRender !== "undefined") {
+          SelectionRender.refresh();
+        }
+      }
+      SelectionTransform.finish();
+
+      try {
+        selectionOverlay.releasePointerCapture(e.pointerId);
+      } catch {}
+    };
+
+    selectionOverlay.addEventListener("pointerup", endResize);
+    selectionOverlay.addEventListener("pointercancel", endResize);
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  FÁZ 5: Selection actions (delete, duplicate, copy/paste)
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * Deep-clone an action for pasting/duplication.
+   * @param {Object} action
+   * @returns {Object}
+   */
+  function cloneAction(action) {
+    const clone = JSON.parse(JSON.stringify(action));
+    // Drop the id so VectorStore assigns a new one
+    delete clone.id;
+    return clone;
+  }
+
+  /**
+   * Create a duplicate of the currently selected action,
+   * offset by (dx, dy).
+   *
+   * @param {number} dx
+   * @param {number} dy
+   * @returns {Object|null} the new action
+   */
+  function duplicateSelected(dx = 16, dy = 16) {
+    if (typeof VectorStore === "undefined") return null;
+    if (!Selection.hasSelection()) return null;
+
+    const { action, layerId } = Selection.getState();
+    if (!action) return null;
+
+    const copy = cloneAction(action);
+    copy.layerId = layerId;
+
+    // Offset every coordinate by dx, dy
+    switch (copy.type) {
+      case "rect":
+        copy.x += dx;
+        copy.y += dy;
+        break;
+      case "circle":
+        copy.cx += dx;
+        copy.cy += dy;
+        break;
+      case "triangle":
+        copy.x1 += dx;
+        copy.y1 += dy;
+        copy.x2 += dx;
+        copy.y2 += dy;
+        copy.x3 += dx;
+        copy.y3 += dy;
+        break;
+      case "line":
+      case "arrow":
+        copy.x1 += dx;
+        copy.y1 += dy;
+        copy.x2 += dx;
+        copy.y2 += dy;
+        break;
+      case "text":
+        copy.x += dx;
+        copy.y += dy;
+        break;
+    }
+
+    VectorStore.push(copy);
+
+    // Find the newly-pushed action (it's the last one for this layer)
+    const layerActions = VectorStore.getForLayer(layerId);
+    const newAction = layerActions[layerActions.length - 1];
+
+    if (newAction) {
+      Selection.set(newAction);
+      redrawLayer(layerId);
+      pushHistory();
+      if (typeof SelectionRender !== "undefined") {
+        SelectionRender.refresh();
+      }
+    }
+
+    return newAction || null;
+  }
+
+  /**
+   * Delete the currently selected action.
+   * @returns {boolean} whether anything was deleted
+   */
+  function deleteSelected() {
+    if (typeof VectorStore === "undefined") return false;
+    if (!Selection.hasSelection()) return false;
+
+    const { action, layerId } = Selection.getState();
+    if (!action) return false;
+
+    VectorStore.removeAction(action.id);
+    Selection.clear();
+    redrawLayer(layerId);
+    pushHistory();
+
+    if (typeof SelectionRender !== "undefined") {
+      SelectionRender.clear();
+    }
+
+    return true;
+  }
+
   // ---------- Keyboard ----------
   function bindKeyboard() {
     document.addEventListener("keydown", (e) => {
@@ -2232,8 +2653,97 @@
 
       if (document.querySelector(".modal-overlay.open")) return;
 
+      // FÁZ 5: Delete key removes the selected shape
+      if (
+        (e.key === "Delete" || e.key === "Backspace") &&
+        Selection.hasSelection()
+      ) {
+        e.preventDefault();
+        if (deleteSelected()) {
+          showToast("Shape deleted", "info", 1200);
+        }
+        return;
+      }
+
+      // FÁZ 5: Escape clears the selection
+      if (e.key === "Escape" && Selection.hasSelection()) {
+        e.preventDefault();
+        Selection.clear();
+        if (typeof SelectionRender !== "undefined") {
+          SelectionRender.clear();
+        }
+        return;
+      }
       const k = e.key.toLowerCase();
       const ctrl = e.ctrlKey || e.metaKey;
+
+      // FÁZ 5: Ctrl+C → copy selected
+      if (ctrl && k === "c" && Selection.hasSelection()) {
+        e.preventDefault();
+        clipboardAction = cloneAction(Selection.getState().action);
+        showToast("Shape copied", "info", 1000);
+        return;
+      }
+
+      // FÁZ 5: Ctrl+V → paste
+      if (ctrl && k === "v" && clipboardAction) {
+        e.preventDefault();
+        const layer = LayerStore.getActive();
+        if (!layer) return;
+
+        const copy = cloneAction(clipboardAction);
+        copy.layerId = layer.id;
+
+        // Offset a bit so the paste is visible
+        switch (copy.type) {
+          case "rect":
+            copy.x += 16;
+            copy.y += 16;
+            break;
+          case "circle":
+            copy.cx += 16;
+            copy.cy += 16;
+            break;
+          case "triangle":
+            copy.x1 += 16;
+            copy.y1 += 16;
+            copy.x2 += 16;
+            copy.y2 += 16;
+            copy.x3 += 16;
+            copy.y3 += 16;
+            break;
+          case "line":
+          case "arrow":
+            copy.x1 += 16;
+            copy.y1 += 16;
+            copy.x2 += 16;
+            copy.y2 += 16;
+            break;
+          case "text":
+            copy.x += 16;
+            copy.y += 16;
+            break;
+        }
+
+        VectorStore.push(copy);
+        const layerActions = VectorStore.getForLayer(layer.id);
+        const newAction = layerActions[layerActions.length - 1];
+
+        if (newAction) {
+          Selection.set(newAction);
+          redrawLayer(layer.id);
+          pushHistory();
+          if (typeof SelectionRender !== "undefined") {
+            SelectionRender.refresh();
+          }
+          showToast("Shape pasted", "success", 1200);
+        }
+
+        // Update clipboard so consecutive pastes keep offsetting
+        clipboardAction = cloneAction(newAction);
+
+        return;
+      }
 
       if (ctrl) {
         if (k === "z" && !e.shiftKey) {
@@ -2254,6 +2764,15 @@
         if (k === "s") {
           e.preventDefault();
           openSaveModal();
+          return;
+        }
+        // FÁZ 5: Ctrl+D → duplicate selected
+        if (k === "d" && Selection.hasSelection()) {
+          e.preventDefault();
+          const dup = duplicateSelected(16, 16);
+          if (dup) {
+            showToast("Shape duplicated", "success", 1200);
+          }
           return;
         }
         // CAMERA: zoom shortcuts
@@ -2461,6 +2980,14 @@
     bindResizeHandles();
     bindModals();
     bindCamera();
+
+    // FÁZ 2: initialize the selection overlay
+    if (typeof SelectionRender !== "undefined" && selectionOverlay) {
+      SelectionRender.init(selectionOverlay);
+    }
+
+    // FÁZ 4a: bind resize handles (delegated)
+    bindSelectionHandles();
 
     const loaded = await loadSavedCanvas();
 

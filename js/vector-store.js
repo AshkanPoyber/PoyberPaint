@@ -97,6 +97,27 @@ const VectorStore = (() => {
   }
 
   /**
+   * Find an action by its id.
+   * @param {string|number} actionId
+   * @returns {Object|null}
+   */
+  function getById(actionId) {
+    return actions.find((a) => a.id === actionId) || null;
+  }
+
+  /**
+   * Remove a specific action by id.
+   * @param {string|number} actionId
+   * @returns {Object|null} the removed action
+   */
+  function removeAction(actionId) {
+    const idx = actions.findIndex((a) => a.id === actionId);
+    if (idx === -1) return null;
+    const [removed] = actions.splice(idx, 1);
+    return removed;
+  }
+
+  /**
    * Restore a previously popped action (for redo).
    * @param {Object} action
    */
@@ -231,5 +252,7 @@ const VectorStore = (() => {
     snapshot,
     restoreSnapshot,
     stats,
+    getById,
+    removeAction,
   };
 })();
